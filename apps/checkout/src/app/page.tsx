@@ -2,19 +2,42 @@
 
 import { CyberpunkBackground } from "@/components/CyberpunkBackground";
 import { motion } from "framer-motion";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  stripHtmlTags,
+  limitLength,
+  MAX_TEXT_LENGTH,
+} from "@qodinger/knot-types";
 
 export default function Home() {
   const [invId, setInvId] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleGo = (e: React.FormEvent) => {
     e.preventDefault();
-    if (invId.startsWith("inv_")) {
-      router.push(`/checkout/${invId}`);
+    setError("");
+
+    const sanitized = limitLength(stripHtmlTags(invId.trim()), MAX_TEXT_LENGTH);
+
+    if (!sanitized) {
+      setError("Please enter a valid invoice ID");
+      return;
     }
+
+    if (!sanitized.startsWith("inv_")) {
+      setError("Invoice ID must start with 'inv_'");
+      return;
+    }
+
+    if (sanitized.length < 7) {
+      setError("Invalid invoice ID format");
+      return;
+    }
+
+    router.push(`/checkout/${sanitized}`);
   };
 
   return (
@@ -39,7 +62,11 @@ export default function Home() {
             type="text"
             placeholder="ENTER INVOICE ID (inv_...)"
             value={invId}
-            onChange={(e) => setInvId(e.target.value)}
+            onChange={(e) => {
+              setInvId(e.target.value);
+              setError("");
+            }}
+            maxLength={MAX_TEXT_LENGTH}
             className="glass focus:border-neon-blue/50 w-full rounded-2xl border-white/5 bg-white/5 px-6 py-5 font-mono text-xs tracking-widest uppercase transition-all outline-none"
           />
           <button
@@ -49,6 +76,17 @@ export default function Home() {
             <ArrowRight size={20} />
           </button>
         </form>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-red-400"
+          >
+            <AlertCircle size={14} />
+            {error}
+          </motion.div>
+        )}
 
         <div className="mt-12 flex justify-center gap-8 text-[10px] font-black tracking-widest uppercase opacity-20">
           <span>No Middlemen</span>

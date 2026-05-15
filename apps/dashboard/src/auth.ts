@@ -1,6 +1,4 @@
 import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:5050";
@@ -9,14 +7,6 @@ const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    GitHub({
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
-    }),
     Credentials({
       id: "magic-link",
       name: "Magic Link",
@@ -28,7 +18,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!credentials?.email || !credentials?.token) return null;
 
         try {
-          // Verify with Backend API
           const res = await fetch(`${API_BASE_URL}/v1/auth/verify`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -86,16 +75,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         return [];
       };
 
-      // 1. Initial Login (OAuth or Credentials)
+      // 1. Initial Login
       if (trigger === "signIn" || (account && user)) {
-        // For OAuth providers like Google/GitHub
         let oauthId = token.oauthId as string;
 
         if (account?.provider === "magic-link") {
           // @ts-expect-error - oauthId is custom field on user returned from authorize
           oauthId = user.oauthId;
-        } else if (account && account.providerAccountId) {
-          oauthId = `${account.provider}:${account.providerAccountId}`;
         }
 
         if (oauthId) {

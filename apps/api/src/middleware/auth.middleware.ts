@@ -2,6 +2,10 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { Merchant } from "@qodinger/knot-database";
 import * as crypto from "crypto";
 
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export const requireAuth = async (
   request: FastifyRequest,
   reply: FastifyReply,
@@ -25,7 +29,7 @@ export const requireAuth = async (
 
   if (oauthId && secret === process.env.INTERNAL_SECRET) {
     const query: Record<string, unknown> = {
-      oauthId: { $regex: new RegExp(`^${oauthId}(:|$)`) },
+      oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
       isActive: true,
     };
     if (merchantId) {

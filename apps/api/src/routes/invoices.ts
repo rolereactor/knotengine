@@ -1,10 +1,18 @@
-import { SUPPORTED_CURRENCIES } from "@qodinger/knot-types";
+import {
+  SUPPORTED_CURRENCIES,
+  stripHtmlTags,
+  limitLength,
+  MAX_TEXT_LENGTH,
+} from "@qodinger/knot-types";
 import { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { InvoicesController } from "../controllers/invoices.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import rateLimit from "@fastify/rate-limit";
+
+const sanitizeDescription = (val?: string) =>
+  val ? limitLength(stripHtmlTags(val).trim(), MAX_TEXT_LENGTH) : val;
 
 /**
  * 🧾 Invoice Routes — /v1/invoices
@@ -60,7 +68,14 @@ export async function invoiceRoutes(app: FastifyInstance) {
           /** Invoice TTL in minutes (optional, falls back to merchant setting) */
           ttl_minutes: z.number().int().min(15).max(1440).optional(),
           metadata: z.record(z.unknown()).optional(),
-          description: z.string().max(255).optional(),
+          description: z
+            .string()
+            .max(
+              MAX_TEXT_LENGTH,
+              `Description must be ${MAX_TEXT_LENGTH} characters or less`,
+            )
+            .transform(sanitizeDescription)
+            .optional(),
           is_testnet: z.boolean().optional(),
         }),
       },

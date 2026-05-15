@@ -3,7 +3,15 @@ import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 
-import { SUPPORTED_CURRENCIES } from "@qodinger/knot-types";
+import {
+  SUPPORTED_CURRENCIES,
+  stripHtmlTags,
+  limitLength,
+  MAX_TEXT_LENGTH,
+  MAX_EMAIL_LENGTH,
+  MAX_URL_LENGTH,
+  MAX_TXHASH_LENGTH,
+} from "@qodinger/knot-types";
 import * as crypto from "crypto";
 import { MerchantBillingController } from "../controllers/merchant/billing.controller.js";
 import { MerchantCoreController } from "../controllers/merchant/core.controller.js";
@@ -11,6 +19,15 @@ import { MerchantNotificationController } from "../controllers/merchant/notifica
 import { MerchantPromoController } from "../controllers/merchant/promo.controller.js";
 import { MerchantSecurityController } from "../controllers/merchant/security.controller.js";
 import { ipAllowlistMiddleware } from "../infra/ip-allowlist.js";
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const sanitizeString = (val?: string) =>
+  val ? limitLength(stripHtmlTags(val).trim(), MAX_TEXT_LENGTH) : val;
+
+const isValidHex = (val: string) => /^[a-fA-F0-9]+$/.test(val);
 
 export async function merchantRoutes(app: FastifyInstance) {
   const server = app.withTypeProvider<ZodTypeProvider>();
@@ -51,7 +68,7 @@ export async function merchantRoutes(app: FastifyInstance) {
     }
 
     const query: Record<string, unknown> = {
-      oauthId: { $regex: new RegExp(`^${oauthId}(:|$)`) },
+      oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
       isActive: true,
     };
     if (merchantId) {
@@ -119,16 +136,20 @@ export async function merchantRoutes(app: FastifyInstance) {
     {
       schema: {
         body: z.object({
-          name: z.string().min(0).optional(),
-          email: z.string().email().optional(),
-          btcXpub: z.string().optional(),
-          btcXpubTestnet: z.string().optional(),
-          ethAddress: z.string().optional(),
-          ethAddressTestnet: z.string().optional(),
-          logoUrl: z.string().optional(),
-          webhookUrl: z.string().optional(),
-          oauthId: z.string().optional(), // OAuth identity e.g. 'google:12345'
-          referredBy: z.string().optional(), // Referral code from URL
+          name: z
+            .string()
+            .max(MAX_TEXT_LENGTH)
+            .transform(sanitizeString)
+            .optional(),
+          email: z.string().email().max(MAX_EMAIL_LENGTH).optional(),
+          btcXpub: z.string().max(300).optional(),
+          btcXpubTestnet: z.string().max(300).optional(),
+          ethAddress: z.string().max(50).optional(),
+          ethAddressTestnet: z.string().max(50).optional(),
+          logoUrl: z.string().url().max(MAX_URL_LENGTH).optional(),
+          webhookUrl: z.string().url().max(MAX_URL_LENGTH).optional(),
+          oauthId: z.string().max(100).optional(),
+          referredBy: z.string().max(20).optional(),
         }),
       },
     },
@@ -182,18 +203,45 @@ export async function merchantRoutes(app: FastifyInstance) {
       preHandler: requireAuth,
       schema: {
         body: z.object({
-          name: z.string().min(0).optional(),
-          email: z.string().email().optional().or(z.literal("")),
-          btcXpub: z.string().nullable().optional(),
-          btcXpubTestnet: z.string().nullable().optional(),
-          ethAddress: z.string().nullable().optional(),
-          ethAddressTestnet: z.string().nullable().optional(),
-          webhookUrl: z.string().nullable().optional().or(z.literal("")),
+          name: z
+            .string()
+            .max(MAX_TEXT_LENGTH)
+            .transform(sanitizeString)
+            .optional(),
+          email: z
+            .string()
+            .email()
+            .max(MAX_EMAIL_LENGTH)
+            .optional()
+            .or(z.literal("")),
+          btcXpub: z.string().max(300).nullable().optional(),
+          btcXpubTestnet: z.string().max(300).nullable().optional(),
+          ethAddress: z.string().max(50).nullable().optional(),
+          ethAddressTestnet: z.string().max(50).nullable().optional(),
+          webhookUrl: z
+            .string()
+            .url()
+            .max(MAX_URL_LENGTH)
+            .nullable()
+            .optional()
+            .or(z.literal("")),
           webhookEvents: z.array(z.string()).optional(),
-          logoUrl: z.string().nullable().optional().or(z.literal("")),
-          returnUrl: z.string().nullable().optional().or(z.literal("")),
+          logoUrl: z
+            .string()
+            .url()
+            .max(MAX_URL_LENGTH)
+            .nullable()
+            .optional()
+            .or(z.literal("")),
+          returnUrl: z
+            .string()
+            .url()
+            .max(MAX_URL_LENGTH)
+            .nullable()
+            .optional()
+            .or(z.literal("")),
           theme: z.enum(["light", "dark", "system"]).optional(),
-          brandColor: z.string().optional(),
+          brandColor: z.string().max(7).optional(),
           brandingEnabled: z.boolean().optional(),
           removeBranding: z.boolean().optional(),
           brandingAlignment: z.enum(["left", "center"]).optional(),
@@ -292,7 +340,13 @@ export async function merchantRoutes(app: FastifyInstance) {
       preHandler: requireAuth,
       schema: {
         body: z.object({
-          txHash: z.string().min(10),
+          txHash: z
+            .string()
+            .min(10, "Transaction hash must be at least 10 characters")
+            .max(MAX_TXHASH_LENGTH)
+            .refine(isValidHex, {
+              message: "Transaction hash must be hexadecimal",
+            }),
           currency: z.enum(SUPPORTED_CURRENCIES),
         }),
       },

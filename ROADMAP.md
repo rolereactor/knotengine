@@ -2,7 +2,7 @@
 
 > **Minimalist, Non-Custodial Crypto Payment Infrastructure**
 
-**Last Updated:** March 1, 2026  
+**Last Updated:** May 15, 2026  
 **Current Version:** v0.4.0  
 **Status:** ✅ Production Ready (99.2% Complete)
 
@@ -63,6 +63,8 @@
 
 **What Was Implemented:**
 
+- ✅ Marketing website (landing, features, pricing, docs pages)
+- ✅ Magic-link only auth (removed OAuth dependency)
 - ✅ Email service with Gmail SMTP (`nodemailer`)
 - ✅ Payment notification templates (received, confirmed, expired, overpaid)
 - ✅ Security alert templates (2FA, IP changes, account actions)
@@ -79,17 +81,17 @@
 
 | Feature                    | Status         | Effort    | Owner       |
 | -------------------------- | -------------- | --------- | ----------- |
+| **Marketing Website**      | ✅ Complete    | —         | —           |
 | **Terms of Service**       | ❌ Not Started | 1-2 days  | Legal       |
 | **Privacy Policy**         | ❌ Not Started | 1 day     | Legal       |
 | **DeFi Yield Integration** | ⚠️ Partial     | 1-2 weeks | Engineering |
 
 #### 🟡 High Priority (Launch +30 Days)
 
-| Feature                     | Status         | Effort    | Trigger     |
-| --------------------------- | -------------- | --------- | ----------- |
-| **Google OAuth**            | ⚠️ Configured  | 2-4 hours | Post-launch |
-| **Production Monitoring**   | ❌ Not Started | 2-3 days  | Pre-launch  |
-| **Error Tracking (Sentry)** | ❌ Not Started | 1 day     | Pre-launch  |
+| Feature                     | Status         | Effort   | Trigger    |
+| --------------------------- | -------------- | -------- | ---------- |
+| **Production Monitoring**   | ❌ Not Started | 2-3 days | Pre-launch |
+| **Error Tracking (Sentry)** | ❌ Not Started | 1 day    | Pre-launch |
 
 ---
 
@@ -116,6 +118,7 @@
 | Auto-Stake             | Depends on staking                       |
 | Partner Kickbacks      | BD complexity, low ROI                   |
 | Slack/Discord Webhooks | Niche use case                           |
+| Google/GitHub OAuth    | Magic link is simpler, no env config     |
 
 ---
 
@@ -207,9 +210,10 @@ Every feature request is evaluated against:
 
 ### Pre-Launch (Complete Before Go-Live)
 
+- [x] Marketing website published
+- [x] Payment/security email alerts implemented
 - [ ] Terms of Service published
 - [ ] Privacy Policy published
-- [ ] Payment/security email alerts implemented
 - [ ] Production monitoring setup (Grafana)
 - [ ] Error tracking configured (Sentry)
 - [ ] Load testing completed
@@ -226,7 +230,6 @@ Every feature request is evaluated against:
 
 ### Post-Launch (First 30 Days)
 
-- [ ] Add Google OAuth
 - [ ] Complete email notification system
 - [ ] Gather user feedback
 - [ ] Iterate based on analytics

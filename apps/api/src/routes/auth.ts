@@ -2,6 +2,15 @@ import { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { AuthController } from "../controllers/auth.controller.js";
+import {
+  stripHtmlTags,
+  limitLength,
+  isValidEmail,
+  MAX_EMAIL_LENGTH,
+} from "@qodinger/knot-types";
+
+const sanitizeEmailInput = (val: string) =>
+  limitLength(stripHtmlTags(val).toLowerCase().trim(), MAX_EMAIL_LENGTH);
 
 // In-memory rate limiting (simple, no Redis required)
 const authRateLimits = new Map<string, { count: number; resetAt: number }>();
@@ -59,7 +68,15 @@ export async function authRoutes(app: FastifyInstance) {
     {
       schema: {
         body: z.object({
-          email: z.string().email(),
+          email: z
+            .string()
+            .email("Invalid email format")
+            .max(
+              MAX_EMAIL_LENGTH,
+              `Email must be ${MAX_EMAIL_LENGTH} characters or less`,
+            )
+            .transform(sanitizeEmailInput)
+            .refine(isValidEmail, { message: "Invalid email format" }),
         }),
       },
     },
@@ -74,8 +91,13 @@ export async function authRoutes(app: FastifyInstance) {
     {
       schema: {
         body: z.object({
-          email: z.string().email(),
-          token: z.string(),
+          email: z
+            .string()
+            .email("Invalid email format")
+            .max(MAX_EMAIL_LENGTH)
+            .transform(sanitizeEmailInput)
+            .refine(isValidEmail, { message: "Invalid email format" }),
+          token: z.string().min(6, "Token must be 6 characters").max(128),
         }),
       },
     },
@@ -90,7 +112,12 @@ export async function authRoutes(app: FastifyInstance) {
     {
       schema: {
         body: z.object({
-          email: z.string().email(),
+          email: z
+            .string()
+            .email("Invalid email format")
+            .max(MAX_EMAIL_LENGTH)
+            .transform(sanitizeEmailInput)
+            .refine(isValidEmail, { message: "Invalid email format" }),
         }),
       },
     },

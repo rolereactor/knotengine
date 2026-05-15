@@ -65,7 +65,11 @@ export function WebhooksTab() {
       webhookUrl: webhookData.webhookUrl,
       webhookEvents: webhookData.webhookEvents,
     });
-  }, [webhookData, reset]);
+  }, [
+    reset,
+    webhookData.webhookUrl,
+    JSON.stringify(webhookData.webhookEvents),
+  ]);
 
   const onSave = async (data: WebhookFormData) => {
     // We need to manually call the save handler with current form data
