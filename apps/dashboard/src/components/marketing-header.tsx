@@ -140,7 +140,7 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
             </DropdownMenu>
           ) : (
             <Button
-              className="h-9 rounded-lg bg-white px-5 text-sm font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+              className="h-9 rounded-md bg-white px-5 text-sm font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
               asChild
             >
               <Link href="/login">Get Started</Link>

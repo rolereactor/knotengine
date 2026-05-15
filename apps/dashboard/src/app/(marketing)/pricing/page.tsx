@@ -1,5 +1,3 @@
-"use client";
-
 import { Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -19,7 +17,7 @@ const plans = [
       "Community support",
     ],
     cta: "Get Started",
-    href: "/register",
+    href: "/dashboard/billing",
   },
   {
     name: "Professional",
@@ -36,7 +34,7 @@ const plans = [
       "Remove KnotEngine branding",
     ],
     cta: "Start Free Trial",
-    href: "/register",
+    href: "/dashboard/billing",
     popular: true,
   },
   {
@@ -54,7 +52,7 @@ const plans = [
       "On-premise deployment available",
     ],
     cta: "Contact Sales",
-    href: "/register",
+    href: "/dashboard/billing",
   },
 ];
 
@@ -85,7 +83,7 @@ export default function PricingPage() {
             {plans.map((plan, i) => (
               <div
                 key={plan.name}
-                className={`animate-in fade-in slide-in-from-bottom-4 relative rounded-2xl border p-8 transition-all duration-700 ${
+                className={`animate-in fade-in slide-in-from-bottom-4 relative flex flex-col rounded-2xl border p-8 transition-all duration-700 ${
                   plan.popular
                     ? "border-white/20 bg-white/[0.04]"
                     : "border-white/5 bg-white/[0.02] hover:border-white/10"
@@ -129,7 +127,7 @@ export default function PricingPage() {
                 </ul>
 
                 <Button
-                  className={`w-full rounded-xl ${
+                  className={`mt-auto w-full rounded-md ${
                     plan.popular
                       ? "bg-white font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
                       : "border-white/10 bg-white/5 font-bold text-white transition-all hover:bg-white/10"

@@ -80,7 +80,7 @@ export default function DocsPage() {
               Want to dive deeper? Check out our full API reference.
             </p>
             <Button
-              className="h-12 rounded-xl bg-white px-8 font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
+              className="h-10 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_30px_rgba(255,255,255,0.15)]"
               asChild
             >
               <Link href="/dashboard/developers">

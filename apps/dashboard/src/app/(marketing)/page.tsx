@@ -1,25 +1,7 @@
-"use client";
-
 import { ArrowRight, ShieldCheck, Code, Zap } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { CodeBlock } from "@/components/ui/code-block";
-
-const codeExample = `curl -X POST https://api.knotengine.com/v1/invoices \\
-  -H "x-api-key: knot_sk_live_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "amount_usd": 100.00,
-    "currency": "USDC_POLYGON",
-    "description": "Order #1234"
-  }'`;
-
-const metrics = [
-  { value: "99.9%", label: "Uptime Target" },
-  { value: "7", label: "Currencies" },
-  { value: "<3s", label: "Payment Detection" },
-  { value: "AGPL-3.0", label: "Open Source" },
-];
+import { TerminalDemo } from "@/components/terminal-demo";
 
 const features = [
   {
@@ -75,89 +57,63 @@ export default function MarketingPage() {
         />
         <div className="absolute top-1/4 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/[0.02] blur-3xl" />
 
-        <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-20">
-          <div className="grid items-center gap-16 lg:grid-cols-2">
-            {/* Left */}
-            <div className="space-y-8">
-              <div className="animate-in fade-in slide-in-from-bottom-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 duration-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <span className="text-xs font-medium text-zinc-400">
-                  Live on mainnet
-                </span>
-              </div>
+        <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-20 text-center">
+          <div className="animate-in fade-in slide-in-from-bottom-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 duration-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <span className="text-xs font-medium text-zinc-400">
+              Live on mainnet
+            </span>
+          </div>
 
-              <h1 className="animate-in fade-in slide-in-from-bottom-4 text-5xl leading-tight font-bold tracking-tight text-white delay-100 duration-700 md:text-6xl">
-                Accept crypto payments{" "}
-                <span className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">
-                  in one API call.
-                </span>
-              </h1>
+          <h1 className="animate-in fade-in slide-in-from-bottom-4 mt-8 text-5xl leading-tight font-bold tracking-tight text-white delay-100 duration-700 md:text-6xl">
+            Accept crypto payments.
+            <br />
+            <span className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">
+              Non-custodial.
+            </span>
+          </h1>
 
-              <p className="animate-in fade-in slide-in-from-bottom-4 max-w-lg text-lg leading-relaxed text-zinc-500 delay-200 duration-700">
-                Non-custodial stablecoin payment infrastructure. One
-                integration, 7 currencies, zero counterparty risk.
-              </p>
+          <p className="animate-in fade-in slide-in-from-bottom-4 mx-auto mt-6 max-w-lg text-lg leading-relaxed text-zinc-500 delay-200 duration-700">
+            One API. 7 currencies. 4 chains. Zero counterparty risk.
+          </p>
 
-              <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-wrap items-center gap-4 delay-300 duration-700">
-                <Button
-                  size="lg"
-                  className="h-12 rounded-xl bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
-                  asChild
-                >
-                  <Link href="/register">
-                    Start accepting payments
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-12 rounded-xl border-white/10 bg-white/5 text-white transition-all hover:bg-white/10"
-                  asChild
-                >
-                  <Link href="/docs">Read the docs</Link>
-                </Button>
-              </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 mt-8 flex flex-wrap items-center justify-center gap-4 delay-300 duration-700">
+            <Button
+              size="lg"
+              className="h-10 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+              asChild
+            >
+              <Link href="/dashboard">
+                Start accepting payments
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-10 rounded-md border-white/10 bg-white/5 text-white transition-all hover:bg-white/10"
+              asChild
+            >
+              <Link href="/docs">Read the docs</Link>
+            </Button>
+          </div>
 
-              <div className="animate-in fade-in slide-in-from-bottom-4 flex flex-wrap gap-6 delay-500 duration-700">
-                {metrics.map((m) => (
-                  <div key={m.label} className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-white">
-                      {m.value}
-                    </span>
-                    <span className="text-xs text-zinc-600">{m.label}</span>
-                  </div>
-                ))}
-              </div>
+          <div className="animate-in fade-in slide-in-from-bottom-4 mt-16 text-left delay-500 duration-700">
+            <TerminalDemo />
+          </div>
+
+          <div className="animate-in fade-in mt-8 flex flex-wrap items-center justify-center gap-6 text-sm text-zinc-500 delay-700 duration-700">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-zinc-400" />
+              <span>Non-custodial</span>
             </div>
-
-            {/* Right — Code + Trust */}
-            <div className="animate-in fade-in slide-in-from-right-8 space-y-6 delay-300 duration-700">
-              <CodeBlock
-                code={codeExample}
-                language="bash"
-                filename="curl"
-                className="shadow-2xl"
-              />
-
-              <div className="flex flex-wrap items-center gap-6 rounded-xl border border-white/5 bg-white/[0.02] px-6 py-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs text-zinc-500">Non-custodial</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs text-zinc-500">
-                    Open source (AGPL-3.0)
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                  <span className="text-xs text-zinc-500">
-                    HMAC-signed webhooks
-                  </span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <Code className="h-4 w-4 text-zinc-400" />
+              <span>Open source (AGPL-3.0)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-zinc-400" />
+              <span>Live on mainnet</span>
             </div>
           </div>
         </div>
@@ -214,10 +170,10 @@ export default function MarketingPage() {
           <div className="animate-in fade-in mt-8 delay-200">
             <Button
               size="lg"
-              className="h-12 rounded-xl bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
+              className="h-10 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
               asChild
             >
-              <Link href="/register">
+              <Link href="/dashboard">
                 Get Started Free
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

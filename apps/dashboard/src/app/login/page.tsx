@@ -1,9 +1,13 @@
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import { Command } from "lucide-react";
+import { auth } from "@/auth";
 import { AuthBackground } from "@/components/auth/auth-background";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const session = await auth();
+  if (session?.user) redirect("/dashboard");
   return (
     <div className="relative container grid min-h-screen flex-col items-center justify-center px-6 lg:max-w-none lg:grid-cols-2 lg:px-0">
       {/* Left panel */}

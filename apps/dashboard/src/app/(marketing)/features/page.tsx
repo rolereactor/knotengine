@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Shield,
   Zap,
@@ -90,10 +88,10 @@ export default function FeaturesPage() {
           <div className="mt-16 text-center">
             <Button
               size="lg"
-              className="h-12 rounded-xl bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200"
+              className="h-10 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200"
               asChild
             >
-              <Link href="/register">
+              <Link href="/dashboard">
                 Start Building
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

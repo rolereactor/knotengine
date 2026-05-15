@@ -71,12 +71,6 @@ export default async function MarketingLayout({
                 >
                   Dashboard
                 </Link>
-                <Link
-                  href="/login"
-                  className="text-sm text-zinc-600 transition-colors hover:text-white"
-                >
-                  Sign In
-                </Link>
               </div>
             </div>
             <div className="space-y-3">
