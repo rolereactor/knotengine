@@ -22,8 +22,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "bip32": "^4.0.0",
-    "bitcoinjs-lib": "^6.1.0",
+    "bip32": "^5.0.1",
+    "bitcoinjs-lib": "^7.0.1",
     "ethers": "^6.10.0",
     "tiny-secp256k1": "^2.2.3"
   },
