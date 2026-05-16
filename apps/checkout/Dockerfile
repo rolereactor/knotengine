@@ -2,7 +2,7 @@
 # KnotEngine — Checkout (Production)
 # ──────────────────────────────────────────────
 
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 
 # ── Dependencies ──
@@ -21,7 +21,7 @@ COPY . .
 RUN corepack enable && pnpm --filter checkout build
 
 # ── Production ──
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache dumb-init
 
