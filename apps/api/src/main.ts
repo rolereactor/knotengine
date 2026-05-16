@@ -32,7 +32,7 @@ import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import packageJson from "../package.json";
+import packageJson from "../package.json" with { type: "json" };
 
 // Fix __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
