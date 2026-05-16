@@ -19,7 +19,7 @@ jobs:
           fetch-tags: true
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v6
 
       - name: Set up Node.js for npm
         uses: actions/setup-node@v4
