@@ -2,6 +2,7 @@ export * from "./models/user.model";
 export * from "./models/merchant.model";
 export * from "./models/invoice.model";
 export * from "./models/webhook-event.model";
+export * from "./models/webhook-delivery.model";
 export * from "./models/topup-claim.model";
 export * from "./models/notification.model";
 export * from "./models/verification-token.model";

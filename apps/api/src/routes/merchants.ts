@@ -1,4 +1,4 @@
-import { Merchant, User } from "@qodinger/knot-database";
+import { Merchant, User, WebhookDelivery } from "@qodinger/knot-database";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -492,6 +492,136 @@ export async function merchantRoutes(app: FastifyInstance) {
       },
     },
     MerchantSecurityController.validateIp,
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/webhooks/deliveries — List webhook delivery logs
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/webhooks/deliveries",
+    {
+      preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          page: z.coerce.number().int().min(1).default(1),
+          limit: z.coerce.number().int().min(1).max(100).default(20),
+          status: z.enum(["pending", "success", "failed"]).optional(),
+          invoiceId: z.string().optional(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return reply.code(401).send({ error: "Unauthorized" });
+      }
+      const query = request.query as {
+        page: number;
+        limit: number;
+        status?: string;
+        invoiceId?: string;
+      };
+
+      const filter: Record<string, unknown> = {
+        merchantId: merchant.merchantId,
+      };
+      if (query.status) filter.status = query.status;
+      if (query.invoiceId) filter.invoiceId = query.invoiceId;
+
+      const page = query.page || 1;
+      const limit = query.limit || 20;
+      const skip = (page - 1) * limit;
+
+      const [deliveries, total] = await Promise.all([
+        WebhookDelivery.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        WebhookDelivery.countDocuments(filter),
+      ]);
+
+      return reply.send({
+        deliveries,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      });
+    },
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/webhooks/deliveries/:id — Get delivery details
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/webhooks/deliveries/:id",
+    {
+      preHandler: requireAuth,
+      schema: {
+        params: z.object({
+          id: z.string(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return reply.code(401).send({ error: "Unauthorized" });
+      }
+      const params = request.params as { id: string };
+
+      const delivery = await WebhookDelivery.findOne({
+        _id: params.id,
+        merchantId: merchant.merchantId,
+      }).lean();
+
+      if (!delivery) {
+        return reply.code(404).send({ error: "Delivery not found" });
+      }
+
+      return reply.send(delivery);
+    },
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/webhooks/stats — Get webhook delivery stats
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/webhooks/stats",
+    { preHandler: requireAuth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return reply.code(401).send({ error: "Unauthorized" });
+      }
+
+      const [total, success, failed, pending] = await Promise.all([
+        WebhookDelivery.countDocuments({ merchantId: merchant.merchantId }),
+        WebhookDelivery.countDocuments({
+          merchantId: merchant.merchantId,
+          status: "success",
+        }),
+        WebhookDelivery.countDocuments({
+          merchantId: merchant.merchantId,
+          status: "failed",
+        }),
+        WebhookDelivery.countDocuments({
+          merchantId: merchant.merchantId,
+          status: "pending",
+        }),
+      ]);
+
+      const successRate = total > 0 ? (success / total) * 100 : 0;
+
+      return reply.send({
+        total,
+        success,
+        failed,
+        pending,
+        successRate: parseFloat(successRate.toFixed(2)),
+      });
+    },
   );
 }
 

@@ -9,6 +9,10 @@ import {
   Check,
   ShieldCheck,
   ExternalLink,
+  Clock,
+  AlertCircle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { cn, dedent } from "@/lib/utils";
 import {
@@ -23,7 +27,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CodeBlock } from "@/components/ui/code-block";
+import { Badge } from "@/components/ui/badge";
 import { useWebhooks } from "../hooks/use-webhooks";
+import { useWebhookDeliveries } from "../hooks/use-webhook-deliveries";
 import { webhookSchema, WebhookFormData } from "../../settings/types";
 
 export function WebhooksTab() {
@@ -43,6 +49,17 @@ export function WebhooksTab() {
     handleRotateWebhookSecret,
     handleTestWebhook,
   } = useWebhooks();
+
+  const {
+    deliveries,
+    stats,
+    loading: deliveriesLoading,
+    page,
+    totalPages,
+    setPage,
+    statusFilter,
+    setStatusFilter,
+  } = useWebhookDeliveries();
 
   const {
     register,
@@ -467,6 +484,161 @@ export function WebhooksTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delivery Logs */}
+      {stats && stats.total > 0 && (
+        <Card className="border shadow-sm">
+          <CardHeader className="px-6 pt-6 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-sm font-semibold">
+                  Delivery Logs
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Recent webhook delivery attempts and their status.
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                {stats && (
+                  <div className="flex items-center gap-3 text-xs">
+                    <span className="flex items-center gap-1 text-emerald-500">
+                      <CheckCircle2 className="size-3" />
+                      {stats.success}
+                    </span>
+                    <span className="flex items-center gap-1 text-red-500">
+                      <XCircle className="size-3" />
+                      {stats.failed}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {stats.successRate}% success
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="px-6 pt-0 pb-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Button
+                variant={statusFilter === "" ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setStatusFilter("")}
+              >
+                All
+              </Button>
+              <Button
+                variant={statusFilter === "success" ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setStatusFilter("success")}
+              >
+                Success
+              </Button>
+              <Button
+                variant={statusFilter === "failed" ? "default" : "outline"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => setStatusFilter("failed")}
+              >
+                Failed
+              </Button>
+            </div>
+
+            {deliveriesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
+              </div>
+            ) : deliveries.length > 0 ? (
+              <div className="space-y-2">
+                {deliveries.map((delivery) => (
+                  <div
+                    key={delivery._id}
+                    className="border-border/30 bg-muted/10 flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      {delivery.status === "success" ? (
+                        <CheckCircle2 className="size-4 text-emerald-500" />
+                      ) : delivery.status === "failed" ? (
+                        <XCircle className="size-4 text-red-500" />
+                      ) : (
+                        <Clock className="size-4 text-amber-500" />
+                      )}
+                      <div>
+                        <p className="text-xs font-medium">
+                          {delivery.eventType}
+                        </p>
+                        <p className="text-muted-foreground text-[10px]">
+                          {delivery.invoiceId} • Attempt #{delivery.attempt}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        {delivery.statusCode && (
+                          <Badge
+                            variant={
+                              delivery.statusCode >= 200 &&
+                              delivery.statusCode < 300
+                                ? "default"
+                                : "destructive"
+                            }
+                            className="text-[10px]"
+                          >
+                            {delivery.statusCode}
+                          </Badge>
+                        )}
+                        {delivery.errorMessage && (
+                          <div className="text-destructive flex items-center gap-1 text-[10px]">
+                            <AlertCircle className="size-3" />
+                            {delivery.errorMessage.substring(0, 30)}...
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-muted-foreground text-right text-[10px]">
+                        <p>{delivery.duration}ms</p>
+                        <p>
+                          {new Date(delivery.createdAt).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground/50 flex items-center justify-center py-8 text-sm">
+                No delivery logs found.
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-muted-foreground text-xs">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

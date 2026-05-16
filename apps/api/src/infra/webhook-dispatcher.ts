@@ -1,4 +1,9 @@
-import { Invoice, IInvoice, Merchant } from "@qodinger/knot-database";
+import {
+  Invoice,
+  IInvoice,
+  Merchant,
+  WebhookDelivery,
+} from "@qodinger/knot-database";
 import { Derivator } from "@qodinger/knot-crypto";
 import * as crypto from "crypto";
 import { NotificationService } from "./notification-service.js";
@@ -125,6 +130,7 @@ export class WebhookDispatcher {
     const secret =
       merchant.webhookSecret || process.env.WEBHOOK_SECRET || "default_secret";
     const signature = Derivator.signWebhookPayload(payloadString, secret);
+    const startTime = Date.now();
 
     try {
       console.log(
@@ -144,9 +150,13 @@ export class WebhookDispatcher {
         signal: AbortSignal.timeout(15000), // 15 second timeout
       });
 
+      const duration = Date.now() - startTime;
+      const attempt = (invoice.webhookAttempts || 0) + 1;
+      const responseBody = await response.text();
+
       if (response.ok) {
         const updateSet: Record<string, unknown> = {
-          webhookAttempts: (invoice.webhookAttempts || 0) + 1,
+          webhook_attempts: attempt,
           lastWebhookAttempt: new Date(),
         };
 
@@ -157,6 +167,20 @@ export class WebhookDispatcher {
         await Invoice.findByIdAndUpdate(invoice._id, {
           $set: updateSet,
         });
+
+        // Log successful delivery
+        await WebhookDelivery.create({
+          merchantId: invoice.merchantId.toString(),
+          invoiceId: invoice.invoiceId,
+          eventType: event,
+          url: merchant.webhookUrl,
+          attempt,
+          status: "success",
+          statusCode: response.status,
+          responseBody: responseBody.substring(0, 1000),
+          duration,
+        });
+
         console.log(
           `✅ Webhook SUCCESS: ${invoiceId} ${event} delivered to merchant.`,
         );
@@ -166,16 +190,35 @@ export class WebhookDispatcher {
       }
     } catch (error: unknown) {
       const attempts = (invoice.webhookAttempts || 0) + 1;
+      const duration = Date.now() - startTime;
 
       // Update attempts in DB regardless of failure
       await Invoice.findByIdAndUpdate(invoice._id, {
         $set: {
-          webhookAttempts: attempts,
+          webhook_attempts: attempts,
           lastWebhookAttempt: new Date(),
         },
       });
 
       const message = error instanceof Error ? error.message : String(error);
+      const statusCode =
+        error instanceof Error && "statusCode" in error
+          ? (error as { statusCode: number }).statusCode
+          : undefined;
+
+      // Log failed delivery
+      await WebhookDelivery.create({
+        merchantId: invoice.merchantId.toString(),
+        invoiceId: invoice.invoiceId,
+        eventType: event,
+        url: merchant.webhookUrl,
+        attempt: attempts,
+        status: "failed",
+        statusCode,
+        errorMessage: message.substring(0, 500),
+        duration,
+      });
+
       console.error(
         `❌ Webhook FAILURE (${attempts}/${this.MAX_ATTEMPTS}) for ${invoiceId}: ${message}`,
       );
