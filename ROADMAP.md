@@ -2,9 +2,9 @@
 
 > **Minimalist, Non-Custodial Crypto Payment Infrastructure**
 
-**Last Updated:** March 1, 2026  
-**Current Version:** v0.4.0  
-**Status:** ✅ Production Ready (99.2% Complete)
+**Last Updated:** May 16, 2026  
+**Current Version:** v0.5.0  
+**Status:** ✅ Production Ready (Self-Hosting Available)
 
 ---
 
@@ -55,14 +55,18 @@
 
 **Focus:** Complete critical items for production launch.
 
-#### ✅ Completed (February 26, 2026)
+#### ✅ Completed (May 16, 2026)
 
-| Feature                       | Status      | Effort  | Notes                     |
-| ----------------------------- | ----------- | ------- | ------------------------- |
-| **Email Notification System** | ✅ Complete | 3 hours | Hybrid Resend/Gmail setup |
+| Feature                        | Status      | Effort  | Notes                     |
+| ------------------------------ | ----------- | ------- | ------------------------- |
+| **Email Notification System**  | ✅ Complete | 3 hours | Hybrid Resend/Gmail setup |
+| **Docker Self-Hosting**        | ✅ Complete | 2 days  | Full production stack     |
+| **Marketing Website Redesign** | ✅ Complete | 1 day   | Dark theme, terminal demo |
 
 **What Was Implemented:**
 
+- ✅ Marketing website (landing, features, pricing, docs pages)
+- ✅ Magic-link only auth (removed OAuth dependency)
 - ✅ Email service with Gmail SMTP (`nodemailer`)
 - ✅ Payment notification templates (received, confirmed, expired, overpaid)
 - ✅ Security alert templates (2FA, IP changes, account actions)
@@ -72,6 +76,13 @@
 - ✅ Magic link authentication emails
 - ✅ Email verification emails
 - ✅ Setup documentation (`docs/GMAIL_SETUP.md`)
+- ✅ Docker self-hosting setup (`docker-compose.yml`, `Dockerfile`s for API/Dashboard/Checkout)
+- ✅ One-line install script (`scripts/install.sh`)
+- ✅ Production environment template (`.env.production`)
+- ✅ Updated README with self-hosting guide
+- ✅ Marketing site redesign (centered hero, animated terminal demo, unified button styling)
+- ✅ Auth routing improvements (`/login` redirects to `/dashboard`)
+- ✅ Pricing cards with bottom-anchored CTAs
 
 **Cost:** $0/month (Gmail free tier - 500 emails/day)
 
@@ -85,11 +96,18 @@
 
 #### 🟡 High Priority (Launch +30 Days)
 
-| Feature                     | Status         | Effort    | Trigger     |
-| --------------------------- | -------------- | --------- | ----------- |
-| **Google OAuth**            | ⚠️ Configured  | 2-4 hours | Post-launch |
-| **Production Monitoring**   | ❌ Not Started | 2-3 days  | Pre-launch  |
-| **Error Tracking (Sentry)** | ❌ Not Started | 1 day     | Pre-launch  |
+| Feature                     | Status         | Effort   | Trigger     |
+| --------------------------- | -------------- | -------- | ----------- |
+| **SDK Improvements**        | ✅ Complete    | 3-5 days | Post-launch |
+| **Dashboard Features**      | ✅ Complete    | 5-7 days | Post-launch |
+| **Webhook Reliability UI**  | ✅ Complete    | 2-3 days | Post-launch |
+| **Documentation**           | ✅ Complete    | 3-4 days | Pre-launch  |
+| **E2E Testing**             | ✅ Complete    | 3-5 days | Pre-launch  |
+| **CI/CD Pipeline**          | ✅ Complete    | 2-3 days | Pre-launch  |
+| **Production Monitoring**   | ⚠️ Partial     | 2-3 days | Pre-launch  |
+| **Error Tracking (Sentry)** | ❌ Not Started | 1 day    | Pre-launch  |
+| **Load Testing**            | ❌ Not Started | 1-2 days | Pre-launch  |
+| **Security Audit**          | ❌ Not Started | 1 week   | Pre-launch  |
 
 ---
 
@@ -116,6 +134,7 @@
 | Auto-Stake             | Depends on staking                       |
 | Partner Kickbacks      | BD complexity, low ROI                   |
 | Slack/Discord Webhooks | Niche use case                           |
+| Google/GitHub OAuth    | Magic link is simpler, no env config     |
 
 ---
 
@@ -207,9 +226,16 @@ Every feature request is evaluated against:
 
 ### Pre-Launch (Complete Before Go-Live)
 
+- [x] Marketing website published
+- [x] Payment/security email alerts implemented
+- [x] Docker self-hosting setup complete
+- [x] One-line install script tested
 - [ ] Terms of Service published
 - [ ] Privacy Policy published
-- [ ] Payment/security email alerts implemented
+- [x] SDK documentation & examples complete
+- [x] API reference documentation published
+- [x] E2E tests passing
+- [x] CI/CD pipeline configured
 - [ ] Production monitoring setup (Grafana)
 - [ ] Error tracking configured (Sentry)
 - [ ] Load testing completed
@@ -226,8 +252,7 @@ Every feature request is evaluated against:
 
 ### Post-Launch (First 30 Days)
 
-- [ ] Add Google OAuth
-- [ ] Complete email notification system
+- [x] Complete email notification system
 - [ ] Gather user feedback
 - [ ] Iterate based on analytics
 - [ ] Plan Q2 features
@@ -245,6 +270,16 @@ Every feature request is evaluated against:
 ---
 
 ## 📝 Changelog
+
+### v0.5.0 (May 2026)
+
+- ✅ Docker self-hosting setup (API, Dashboard, Checkout, MongoDB, Redis)
+- ✅ One-line install script (`scripts/install.sh`)
+- ✅ Marketing website redesign (centered hero, animated terminal demo)
+- ✅ Auth routing improvements (`/login` → `/dashboard` redirect)
+- ✅ Unified button styling across all marketing pages
+- ✅ Pricing cards with bottom-anchored CTAs
+- ✅ Production environment template (`.env.production`)
 
 ### v0.4.0 (February 2026)
 

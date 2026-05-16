@@ -4,18 +4,8 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Public routes — always accessible
-  const publicPaths = [
-    "/login",
-    "/register",
-    "/api/auth",
-    "/api/sw",
-    "/manifest.json",
-    "/offline",
-  ];
-  const isPublic = publicPaths.some((p) => pathname.startsWith(p));
-
-  if (isPublic) return NextResponse.next();
+  // Marketing pages and auth pages are public — no login required
+  if (!pathname.startsWith("/dashboard")) return NextResponse.next();
 
   // Protected routes — require session
   if (!req.auth) {
@@ -32,7 +22,7 @@ export default auth((req) => {
   const hasMerchants = merchants.length > 0;
 
   // 1. User has NO merchants -> Force them to /dashboard/onboarding
-  if (!hasMerchants && !isOnboardingPage && pathname.startsWith("/dashboard")) {
+  if (!hasMerchants && !isOnboardingPage) {
     return NextResponse.redirect(new URL("/dashboard/onboarding", req.url));
   }
 
@@ -56,7 +46,6 @@ export default auth((req) => {
     twoFactorRequired &&
     !twoFactorVerified &&
     !is2FAPage &&
-    pathname.startsWith("/dashboard") &&
     // Allow API proxy requests to pass through (needed for 2FA validation endpoint)
     !pathname.startsWith("/api")
   ) {

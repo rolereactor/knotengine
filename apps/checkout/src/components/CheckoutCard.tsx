@@ -172,7 +172,7 @@ export function CheckoutCard({ invoice }: CheckoutCardProps) {
                 )}
               >
                 <p className="text-muted-foreground text-[11px] leading-relaxed italic">
-                  "{invoice.description}"
+                  &quot;{invoice.description}&quot;
                 </p>
               </div>
             )}

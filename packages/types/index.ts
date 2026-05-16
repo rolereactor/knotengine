@@ -235,3 +235,43 @@ export const DEFAULT_CONFIRMATIONS: Record<string, number> = {
   USDT_POLYGON: 30,
   USDC_POLYGON: 30,
 };
+
+export const MAX_TEXT_LENGTH = 255;
+export const MAX_EMAIL_LENGTH = 254;
+export const MAX_URL_LENGTH = 2048;
+export const MAX_TXHASH_LENGTH = 128;
+
+const HTML_TAG_PATTERN = /<[^>]*>/g;
+const SCRIPT_PATTERN = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
+
+export function stripHtmlTags(input: string): string {
+  return input.replace(SCRIPT_PATTERN, "").replace(HTML_TAG_PATTERN, "");
+}
+
+export function limitLength(input: string, maxLength: number): string {
+  if (input.length > maxLength) {
+    return input.slice(0, maxLength);
+  }
+  return input;
+}
+
+export function escapeSpecialChars(input: string): string {
+  return input.replace(/[*^+?()|${}[\]\\]/g, "\\$&");
+}
+
+export function isValidEmail(input: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input);
+}
+
+export const inputValidators = {
+  stripHtmlTags,
+  limitLength,
+  escapeSpecialChars,
+  isValidEmail,
+  sanitizeInput: (input: string) =>
+    limitLength(stripHtmlTags(input), MAX_TEXT_LENGTH),
+  sanitizeEmail: (input: string) =>
+    limitLength(stripHtmlTags(input).toLowerCase().trim(), MAX_EMAIL_LENGTH),
+  sanitizeUrl: (input: string) =>
+    limitLength(stripHtmlTags(input), MAX_URL_LENGTH),
+};
