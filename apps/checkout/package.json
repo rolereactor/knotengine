@@ -6,7 +6,7 @@
     "url": "https://github.com/qodinger/knotengine.git"
   },
   "license": "AGPL-3.0",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 5051",

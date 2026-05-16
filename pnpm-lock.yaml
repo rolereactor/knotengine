@@ -251,7 +251,7 @@ importers:
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.71.2(react@19.2.3))
       '@qodinger/knot-types':
-        specifier: workspace:0.4.0
+        specifier: workspace:0.5.0
         version: link:../../packages/types
       axios:
         specifier: ^1.13.5
