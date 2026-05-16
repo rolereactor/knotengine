@@ -31,7 +31,7 @@ KnotEngine uses Gmail SMTP for sending transactional emails (payment alerts, sec
 
 ### Step 3: Add to Environment Variables
 
-Create or update your `.env` file in the `apps/api/` directory:
+Create or update your `.env` file in the **project root** directory:
 
 ```bash
 # Gmail SMTP Configuration
@@ -150,7 +150,7 @@ INTERNAL_SECRET=your-internal-secret-here
 
 ## 🎯 Production vs Development
 
-In the latest v0.3.1 architecture, follows a **hybrid email model**:
+In the current architecture, KnotEngine follows a **hybrid email model**:
 
 1. **Local Development**: Use this guide to set up **Gmail SMTP**. It is free, requires no DNS verification, and is perfect for testing onboarding and payment flows.
 2. **Production**: Use **Resend**. It provides enterprise-grade deliverability, bounce tracking, and professional custom domains.
