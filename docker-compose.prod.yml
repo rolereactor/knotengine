@@ -1,0 +1,136 @@
+# ══════════════════════════════════════════════
+# KnotEngine — Production Docker Compose
+# ══════════════════════════════════════════════
+# Usage:
+#   1. Copy .env.example to .env and configure
+#   2. docker compose -f docker-compose.prod.yml up -d
+# ══════════════════════════════════════════════
+
+services:
+  # ── MongoDB ──
+  mongodb:
+    image: mongo:7-jammy
+    container_name: knot_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-knotadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: knotengine
+    ports:
+      - "127.0.0.1:27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - knotnet
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: knot_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - knotnet
+
+  # ── API Engine ──
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: knot_api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5050:5050"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: mongodb://${MONGO_USER:-knotadmin}:${MONGO_PASSWORD}@mongodb:27017/knotengine?authSource=admin
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5050/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - knotnet
+
+  # ── Dashboard ──
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+    container_name: knot_dashboard
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5052:5052"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${PUBLIC_URL:-http://localhost:5050}
+      NEXT_PUBLIC_CHECKOUT_URL: ${CHECKOUT_URL:-http://localhost:5051}
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5052/', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - knotnet
+
+  # ── Checkout ──
+  checkout:
+    build:
+      context: .
+      dockerfile: apps/checkout/Dockerfile
+    container_name: knot_checkout
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5051:5051"
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${PUBLIC_URL:-http://localhost:5050}
+    depends_on:
+      - api
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:5051/', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - knotnet
+
+volumes:
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  knotnet:
+    driver: bridge

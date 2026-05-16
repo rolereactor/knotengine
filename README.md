@@ -188,6 +188,109 @@ knotengine/
 
 ---
 
+## 🏠 Self-Hosting
+
+KnotEngine is fully self-hostable under the AGPL-3.0 license. Deploy everything on a single VPS with one command.
+
+### Minimum Requirements
+
+| Resource | Minimum                  | Recommended  |
+| :------- | :----------------------- | :----------- |
+| CPU      | 1 vCPU                   | 2 vCPU       |
+| RAM      | 1 GB                     | 2 GB         |
+| Disk     | 10 GB                    | 20 GB        |
+| OS       | Ubuntu 24.04 / Debian 12 | Alpine Linux |
+
+### Quick Deploy
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/qodinger/knotengine.git
+cd knotengine
+
+# 2. Configure environment
+cp .env.production .env
+# Edit .env and replace all <placeholder> values with your secrets
+
+# 3. Generate secrets
+openssl rand -hex 32  # for JWT_SECRET, WEBHOOK_SECRET, etc.
+
+# 4. Build and start everything
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### Services
+
+| Service   | URL                       | Port  |
+| :-------- | :------------------------ | :---- |
+| API       | `http://your-server:5050` | 5050  |
+| Dashboard | `http://your-server:5052` | 5052  |
+| Checkout  | `http://your-server:5051` | 5051  |
+| MongoDB   | Internal (not exposed)    | 27017 |
+| Redis     | Internal (not exposed)    | 6379  |
+
+### Reverse Proxy (Recommended)
+
+Set up Nginx with SSL to route traffic:
+
+```nginx
+server {
+    listen 80;
+    server_name api.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:5050;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";  # WebSocket support
+    }
+}
+
+server {
+    listen 80;
+    server_name dashboard.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:5052;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+
+server {
+    listen 80;
+    server_name checkout.yourdomain.com;
+    location / {
+        proxy_pass http://127.0.0.1:5051;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+Then add SSL with Certbot:
+
+```bash
+sudo certbot --nginx -d api.yourdomain.com -d dashboard.yourdomain.com -d checkout.yourdomain.com
+```
+
+### Management
+
+```bash
+# View logs
+docker compose -f docker-compose.prod.yml logs -f api
+
+# Restart a service
+docker compose -f docker-compose.prod.yml restart dashboard
+
+# Update to latest version
+git pull && docker compose -f docker-compose.prod.yml up -d --build
+
+# Stop everything
+docker compose -f docker-compose.prod.yml down
+```
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please follow [Conventional Commits](https://www.conventionalcommits.org) for all commit messages — enforced via `commitlint`.
