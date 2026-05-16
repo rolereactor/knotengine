@@ -2,7 +2,7 @@
 # KnotEngine — API Engine (Production)
 # ──────────────────────────────────────────────
 
-FROM node:20-alpine AS base
+FROM node:26-alpine AS base
 RUN apk add --no-cache python3 make g++
 WORKDIR /app
 
@@ -22,7 +22,7 @@ COPY . .
 RUN corepack enable && pnpm --filter @qodinger/knot-types build && pnpm --filter @qodinger/knot-crypto build && pnpm --filter @qodinger/knot-database build && pnpm --filter api build
 
 # ── Production ──
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 RUN apk add --no-cache dumb-init
 
