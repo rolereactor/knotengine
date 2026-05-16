@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-16
+
+### Added
+
+- **SDK v0.5.0** — Major SDK upgrade with 10 new methods:
+  - `listInvoices()`, `cancelInvoice()`, `resolveInvoice()`
+  - `getMerchant()`, `updateMerchant()`
+  - `rotateApiKey()`, `rotateWebhookSecret()`, `sendTestWebhook()`
+  - `getAssetConfig()`, `getMerchantStats()`
+- **Custom Error Classes** — `KnotAuthenticationError`, `KnotValidationError`, `KnotNotFoundError`, `KnotRateLimitError` with proper HTTP status codes and retry-after headers.
+- **SDK Constants** — `WEBHOOK_EVENTS`, `CURRENCIES`, `INVOICE_STATUSES` exported for type-safe development.
+- **All 7 Currencies** — Added `USDC_ERC20` and `USDC_POLYGON` support.
+- **Analytics Dashboard** — New `/dashboard/analytics` page with volume charts, currency breakdown, status distribution, and hourly pattern visualization.
+- **Webhook Delivery Logs** — New `WebhookDelivery` model tracking every delivery attempt with status codes, duration, and error messages.
+- **Webhook Stats API** — `GET /v1/merchants/me/webhooks/deliveries` and `GET /v1/merchants/me/webhooks/stats` endpoints.
+- **CI/CD Pipeline** — GitHub Actions for CI (lint, test, Docker build), SDK publishing to npm, and Docker image publishing to GHCR.
+- **Dependabot** — Automated weekly dependency updates for npm, GitHub Actions, and Docker.
+- **Documentation** — `docs/API_REFERENCE.md`, `docs/INTEGRATION_GUIDE.md`, and comprehensive SDK README.
+- **E2E Tests** — API integration tests and Docker smoke test script (`scripts/smoke-tests.sh`).
+
+### Changed
+
+- **SDK README** — Complete rewrite with full API reference, error handling guide, and payment flow diagrams.
+- **ROADMAP.md** — Updated status for all completed items.
+
+### Fixed
+
+- **Webhook Dispatcher** — Now logs every delivery attempt to the database with status, duration, and error details.
+- **API Routes** — Added null-safety checks for merchant context in webhook delivery endpoints.
+
 ## [0.4.0] - 2026-03-01
 
 ### Added
@@ -132,6 +162,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **API Engine** — Improved error handling and performance optimizations for the core Knot server.
 - **Webhooks** — Enhanced payload security with HMAC signatures and unique event IDs (`evt_...`).
 
+[0.5.0]: https://github.com/qodinger/knotengine/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/qodinger/knotengine/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/qodinger/knotengine/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/qodinger/knotengine/releases/tag/v0.2.1

@@ -20,9 +20,9 @@ npm install @qodinger/knot-types
 ## 📖 Usage
 
 ```typescript
-import { IInvoice, SUPPORTED_CURRENCIES } from "@qodinger/knot-types";
+import { Invoice, SUPPORTED_CURRENCIES } from "@qodinger/knot-types";
 
-const payment: Partial<IInvoice> = {
+const payment: Partial<Invoice> = {
   status: "pending",
   cryptoCurrency: "BTC",
   amountUsd: 100,
