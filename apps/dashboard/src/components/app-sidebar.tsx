@@ -13,6 +13,7 @@ import {
   Puzzle,
   Users,
   Zap,
+  BarChart3,
 } from "lucide-react";
 import {
   HomeIcon,
@@ -66,6 +67,7 @@ const navGroups = [
     label: "Core",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+      { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
       { icon: CreditCard, label: "Payments", href: "/dashboard/payments" },
       { icon: Activity, label: "Activity Log", href: "/dashboard/activity" },
       { icon: Wallet, label: "Balances", href: "/dashboard/balances" },
