@@ -28,8 +28,9 @@ export default function TermsPage() {
               3. Limitation of Liability
             </h2>
             <p>
-              KnotEngine is provided "as is" without warranty of any kind. We
-              are not liable for any losses arising from the use of our service.
+              KnotEngine is provided &quot;as is&quot; without warranty of any
+              kind. We are not liable for any losses arising from the use of our
+              service.
             </p>
           </div>
         </div>

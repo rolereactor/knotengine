@@ -59,6 +59,9 @@ jobs:
       - name: Run SDK tests
         run: pnpm --filter @qodinger/knot-sdk test
 
+      - name: Build workspace packages
+        run: pnpm --filter @qodinger/knot-types build && pnpm --filter @qodinger/knot-crypto build && pnpm --filter @qodinger/knot-database build
+
       - name: Run API tests
         run: pnpm --filter api test
 
