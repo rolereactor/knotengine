@@ -201,22 +201,24 @@ KnotEngine is fully self-hostable under the AGPL-3.0 license. Deploy everything 
 | Disk     | 10 GB                    | 20 GB        |
 | OS       | Ubuntu 24.04 / Debian 12 | Alpine Linux |
 
-### Quick Deploy
+### Quick Install
 
 ```bash
-# 1. Clone the repository
+curl -fsSL https://raw.githubusercontent.com/qodinger/knotengine/main/scripts/install.sh | bash
+```
+
+Or manual setup:
+
+```bash
+# 1. Clone
 git clone https://github.com/qodinger/knotengine.git
 cd knotengine
 
-# 2. Configure environment
+# 2. Configure (secrets auto-generated)
 cp .env.production .env
-# Edit .env and replace all <placeholder> values with your secrets
 
-# 3. Generate secrets
-openssl rand -hex 32  # for JWT_SECRET, WEBHOOK_SECRET, etc.
-
-# 4. Build and start everything
-docker compose -f docker-compose.prod.yml up -d --build
+# 3. Start everything
+docker compose up -d --build
 ```
 
 ### Services
@@ -277,16 +279,16 @@ sudo certbot --nginx -d api.yourdomain.com -d dashboard.yourdomain.com -d checko
 
 ```bash
 # View logs
-docker compose -f docker-compose.prod.yml logs -f api
+docker compose logs -f api
 
 # Restart a service
-docker compose -f docker-compose.prod.yml restart dashboard
+docker compose restart dashboard
 
 # Update to latest version
-git pull && docker compose -f docker-compose.prod.yml up -d --build
+git pull && docker compose up -d --build
 
 # Stop everything
-docker compose -f docker-compose.prod.yml down
+docker compose down
 ```
 
 ---
