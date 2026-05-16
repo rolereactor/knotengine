@@ -55,7 +55,7 @@ export default function MarketingPage() {
             backgroundSize: "60px 60px",
           }}
         />
-        <div className="absolute top-1/4 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/[0.02] blur-3xl" />
+        <div className="absolute top-1/4 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/2 blur-3xl" />
 
         <div className="relative z-10 mx-auto w-full max-w-5xl px-6 py-20 text-center">
           <div className="animate-in fade-in slide-in-from-bottom-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 duration-700">
@@ -68,7 +68,7 @@ export default function MarketingPage() {
           <h1 className="animate-in fade-in slide-in-from-bottom-4 mt-8 text-5xl leading-tight font-bold tracking-tight text-white delay-100 duration-700 md:text-6xl">
             Accept crypto payments.
             <br />
-            <span className="bg-gradient-to-r from-white to-zinc-500 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-white to-zinc-500 bg-clip-text text-transparent">
               Non-custodial.
             </span>
           </h1>
@@ -135,7 +135,7 @@ export default function MarketingPage() {
             {features.map((feature, i) => (
               <div
                 key={feature.title}
-                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/[0.04] ${
+                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/2 p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/4 ${
                   feature.className || ""
                 }`}
                 style={{ animationDelay: `${i * 100}ms` }}

@@ -1,7 +1,10 @@
 node_modules
 .DS_Store
 dist
-.env*
+.env
+.env.local
+.env.development
+.env.*.local
 .next
 .turbo
 *.log

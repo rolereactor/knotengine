@@ -1,0 +1,16 @@
+node_modules
+.git
+.next
+dist
+.turbo
+.env
+.env.development
+.env.production
+*.md
+!README.md
+.github
+.husky
+.vscode
+.agents
+.scripts
+docs
