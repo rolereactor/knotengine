@@ -19,7 +19,7 @@ RUN corepack enable && pnpm install --frozen-lockfile
 FROM base AS builder
 COPY --from=deps /app .
 COPY . .
-RUN corepack enable && pnpm --filter api build
+RUN corepack enable && pnpm --filter @qodinger/knot-types build && pnpm --filter @qodinger/knot-crypto build && pnpm --filter @qodinger/knot-database build && pnpm --filter api build
 
 # ── Production ──
 FROM node:20-alpine AS runner
