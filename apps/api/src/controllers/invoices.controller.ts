@@ -1,6 +1,11 @@
 import { Derivator } from "@qodinger/knot-crypto";
 import { IInvoice, Invoice, Merchant, User } from "@qodinger/knot-database";
-import { Currency, SUPPORTED_CURRENCIES } from "@qodinger/knot-types";
+import {
+  Currency,
+  SUPPORTED_CURRENCIES,
+  checkPlanLimit,
+} from "@qodinger/knot-types";
+import { getEffectivePlan } from "../core/self-hosted-mode.js";
 import * as crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConfirmationEngine } from "../core/confirmation-engine.js";
@@ -38,6 +43,69 @@ export const InvoicesController = {
         return reply.code(400).send({
           error: `Testnet is currently only supported for: ${SUPPORTED_CURRENCIES.join(", ")}.`,
         });
+      }
+
+      // 🚦 Plan Limit Enforcement: Monthly Invoice Quota
+      if (!isTestnet) {
+        const currentMonth = new Date();
+        currentMonth.setDate(1);
+        currentMonth.setHours(0, 0, 0, 0);
+
+        const invoiceCount = await Invoice.countDocuments({
+          merchantId: merchant._id,
+          createdAt: { $gte: currentMonth },
+          "metadata.isTestnet": { $ne: true },
+        });
+
+        const effectivePlan = getEffectivePlan(merchant.plan || "starter");
+        const { allowed, limit } = checkPlanLimit(
+          effectivePlan,
+          "maxInvoicesPerMonth",
+          invoiceCount,
+        );
+
+        if (!allowed) {
+          return reply.code(429).send({
+            error: `Monthly invoice limit reached (${invoiceCount}/${limit}). Upgrade your plan to increase limits.`,
+            limit,
+            current: invoiceCount,
+            plan: merchant.plan || "starter",
+          });
+        }
+
+        // 🚦 Plan Limit Enforcement: Monthly Volume Cap
+        const volumeResult = await Invoice.aggregate<{
+          _id: null;
+          total: number;
+        }>([
+          {
+            $match: {
+              merchantId: merchant._id,
+              createdAt: { $gte: currentMonth },
+              status: "confirmed",
+              "metadata.isTestnet": { $ne: true },
+            },
+          },
+          { $group: { _id: null, total: { $sum: "$amountUsd" } } },
+        ]);
+
+        const currentVolume =
+          volumeResult.length > 0 ? volumeResult[0].total : 0;
+
+        const { allowed: volumeAllowed, limit: volumeLimit } = checkPlanLimit(
+          effectivePlan,
+          "maxMonthlyVolume",
+          currentVolume + amount_usd,
+        );
+
+        if (!volumeAllowed) {
+          return reply.code(429).send({
+            error: `Monthly volume cap reached ($${currentVolume.toFixed(2)}/$${volumeLimit.toFixed(2)}). Upgrade your plan to increase limits.`,
+            limit: volumeLimit,
+            current: currentVolume,
+            plan: merchant.plan || "starter",
+          });
+        }
       }
 
       // ✅ PERFORMANCE FIX: Parallelize independent operations

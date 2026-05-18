@@ -28,6 +28,7 @@ import { connectToDatabase } from "@qodinger/knot-database";
 import { SocketService } from "./infra/socket-service.js";
 import { WebhookQueue } from "./infra/webhook-queue.js";
 import { RedisClient } from "./infra/redis-client.js";
+import { isSelfHosted } from "./core/self-hosted-mode.js";
 import * as Metrics from "./infra/metrics.js";
 
 import dotenv from "dotenv";
@@ -120,13 +121,13 @@ SocketService.init(server.server);
 
 // ──────────────────────────────────────────────
 // Health Check
-// ──────────────────────────────────────────────
 server.get("/health", async () => {
   return {
     status: "ok",
     engine: `Knot v${packageJson.version}`,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
+    selfHosted: isSelfHosted(),
   };
 });
 

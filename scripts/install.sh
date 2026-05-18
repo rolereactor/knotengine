@@ -67,23 +67,28 @@ if [ ! -f ".env" ]; then
   WEBHOOK_SECRET=$(openssl rand -hex 32)
   INTERNAL_SECRET="knot_internal_$(openssl rand -hex 16)"
   NEXTAUTH_SECRET="knot_secret_$(openssl rand -hex 16)"
+  AUTH_SECRET="knot_auth_$(openssl rand -hex 16)"
   MONGO_PASSWORD=$(openssl rand -hex 16)
   REDIS_PASSWORD=$(openssl rand -hex 16)
+  MONGO_USER="knotadmin"
 
   # Replace placeholders
-  sed -i.bak "s/<generate-a-strong-password>/$MONGO_PASSWORD/g" .env
-  sed -i.bak "s/<generate-a-random-secret>/$JWT_SECRET/g" .env
-  sed -i.bak "s/knot_internal_<generate-a-random-secret>/$INTERNAL_SECRET/g" .env
-  sed -i.bak "s/knot_secret_<generate-a-random-secret>/$NEXTAUTH_SECRET/g" .env
+  sed -i.bak "s/<CHANGE_PASSWORD>/$MONGO_PASSWORD/g" .env
+  sed -i.bak "s/<CHANGE_REDIS_PASSWORD>/$REDIS_PASSWORD/g" .env
+  sed -i.bak "s/<CHANGE_THIS_TO_A_LONG_RANDOM_STRING>/$JWT_SECRET/g" .env
+  sed -i.bak "s/<CHANGE_ADD_YOUR_TATUM_KEY>/your_tatum_api_key/g" .env
+  sed -i.bak "s/<CHANGE_ADD_YOUR_WEBHOOK_SECRET>/$WEBHOOK_SECRET/g" .env
+  sed -i.bak "s/<CHANGE_ADD_YOUR_ALCHEMY_KEY>/your_alchemy_api_key/g" .env
+  sed -i.bak "s/<CHANGE_ADD_YOUR_ETH_ADDRESS>/your_eth_wallet_address/g" .env
   rm -f .env.bak
 
-  echo -e "${GREEN}✅ Secrets generated automatically${NC}"
+  echo -e "${GREEN}✅ Secrets generated automatically (SELF_HOSTED=true)${NC}"
   echo -e "${YELLOW}⚠️  Please edit .env and configure:${NC}"
-  echo "   - TATUM_API_KEY"
-  echo "   - ALCHEMY_API_KEY"
-  echo "   - PUBLIC_URL (your domain)"
-  echo "   - PLATFORM_FEE_WALLET_* (your wallet addresses)"
-  echo "   - Email settings"
+  echo "   - TATUM_API_KEY (get free at https://dashboard.tatum.io)"
+  echo "   - ALCHEMY_API_KEY (get free at https://www.alchemy.com)"
+  echo "   - PLATFORM_FEE_WALLET_EVM (your Ethereum wallet address)"
+  echo "   - PUBLIC_URL (your public domain)"
+  echo ""
 else
   echo -e "${GREEN}✅ .env already exists, skipping${NC}"
 fi
@@ -93,8 +98,12 @@ echo -e "${GREEN}🎉 Installation complete!${NC}"
 echo ""
 echo "Next steps:"
 echo "  1. Edit .env: cd $INSTALL_DIR && nano .env"
+echo "     - Add your Tatum API key"
+echo "     - Add your Alchemy API key"
+echo "     - Add your Ethereum wallet address"
 echo "  2. Start services: docker compose up -d --build"
-echo "  3. View logs: docker compose logs -f api"
+echo "  3. Seed demo data: docker compose exec api node dist/src/scripts/seed.js"
+echo "  4. View logs: docker compose logs -f api"
 echo ""
 echo "Once running:"
 echo "  API:       http://localhost:5050"
