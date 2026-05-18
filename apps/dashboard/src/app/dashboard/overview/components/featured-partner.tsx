@@ -3,7 +3,6 @@
 import { ShieldCheck, ArrowRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
 export function FeaturedPartner() {
   return (
@@ -26,17 +25,8 @@ export function FeaturedPartner() {
           </div>
           <div className="flex shrink-0 items-center gap-3">
             <Button
-              asChild
-              variant="ghost"
-              className="text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-600"
-            >
-              <Link href="/dashboard/ecosystem" prefetch={false}>
-                View All Partners
-              </Link>
-            </Button>
-            <Button
-              asChild
               className="border-none bg-emerald-500 text-white hover:bg-emerald-600"
+              asChild
             >
               <a
                 href="https://affiliate.ledger.com"

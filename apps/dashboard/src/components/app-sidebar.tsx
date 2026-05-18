@@ -10,9 +10,7 @@ import {
   Settings,
   LifeBuoy,
   Activity,
-  Puzzle,
   Users,
-  Zap,
   BarChart3,
 } from "lucide-react";
 import {
@@ -78,21 +76,9 @@ const navGroups = [
     label: "Growth",
     items: [
       {
-        icon: Zap,
-        label: "Staking",
-        href: "/dashboard/staking",
-        disabled: true,
-      },
-      {
         icon: Users,
         label: "Affiliate Program",
         href: "/dashboard/affiliates",
-      },
-      {
-        icon: Puzzle,
-        label: "Ecosystem",
-        href: "/dashboard/ecosystem",
-        disabled: true,
       },
     ],
   },
