@@ -80,26 +80,30 @@ pnpm install
 ### 2. Configure
 
 ```bash
-cp .env.example .env
+cp .env.example .env.local
 ```
 
-Edit `.env` with your keys:
+Edit `.env.local` with your keys:
 
-| Variable          | Description                   |
-| ----------------- | ----------------------------- |
-| `DATABASE_URL`    | MongoDB connection string     |
-| `TATUM_API_KEY`   | Primary blockchain monitor    |
-| `ALCHEMY_API_KEY` | EVM failover provider         |
-| `JWT_SECRET`      | Session signing secret        |
-| `INTERNAL_SECRET` | API ↔ Dashboard shared secret |
+| Variable             | Description                   |
+| -------------------- | ----------------------------- |
+| `DATABASE_URL`       | MongoDB connection string     |
+| `TATUM_API_KEY`      | Primary blockchain monitor    |
+| `ALCHEMY_API_KEY`    | EVM failover provider         |
+| `INTERNAL_SECRET`    | API ↔ Dashboard shared secret |
+| `AUTH_SECRET`        | NextAuth session secret       |
+| `GMAIL_USER`         | Email sender (dev)            |
+| `GMAIL_APP_PASSWORD` | Gmail app password (dev)      |
+| `RESEND_API_KEY`     | Email API (production)        |
 
 ### 3. Start
 
 ```bash
-pnpm start
+pnpm docker:up    # Start MongoDB & Redis
+pnpm dev          # Start all apps (API, Checkout, Dashboard)
 ```
 
-That's it. Everything runs locally:
+Everything runs locally:
 
 | Service     | URL                     | Port |
 | ----------- | ----------------------- | ---- |

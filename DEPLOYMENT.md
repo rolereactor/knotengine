@@ -48,32 +48,38 @@ pnpm install
 
 ### 2. Environment Variables
 
-Create a `.env.production` file in the root directory:
+Create a `.env.local` file based on `.env.example`:
 
 ```bash
+# Environment
+NODE_ENV=production
+
 # Core
 PORT=5050
-NODE_ENV=production
-INTERNAL_SECRET=your_long_random_secret
-
-# Database & Cache
 DATABASE_URL=mongodb+srv://...
 REDIS_URL=redis://...
 
-# 3rd Party APIs
-TATUM_API_KEY=...
-ALCHEMY_API_KEY=...
-# Email Configuration (Hybrid)
-# Local development uses Gmail SMTP, Production uses Resend
-GMAIL_USER=your-email@gmail.com
-GMAIL_APP_PASSWORD=xxxx-xxxx-xxxx-xxxx
-RESEND_API_KEY=re_xxxxxxxxx
-FROM_EMAIL="KnotEngine <verified-sender@knotengine.com>"
+# Security
+INTERNAL_SECRET=<GENERATE_WITH_openssl_rand_hex_32>
+AUTH_SECRET=<GENERATE_WITH_openssl_rand_hex_32>
 
 # URLs
 PUBLIC_URL=https://api.yourdomain.com
 DASHBOARD_URL=https://dashboard.yourdomain.com
 CHECKOUT_BASE_URL=https://checkout.yourdomain.com
+
+# Blockchain
+BITCOIN_NETWORK=mainnet
+TATUM_API_KEY=...
+TATUM_WEBHOOK_SECRET=...
+ALCHEMY_API_KEY=...
+ALCHEMY_AUTH_TOKEN=...
+ALCHEMY_NOTIFY_WEBHOOK_ID=...
+ALCHEMY_WEBHOOK_SIGNING_KEY=...
+
+# Email (Resend for production)
+RESEND_API_KEY=...
+FROM_EMAIL="KnotEngine <noreply@yourdomain.com>"
 ```
 
 ### 3. Build & Launch
@@ -99,7 +105,7 @@ Deploy `apps/dashboard` and `apps/checkout` as separate projects on Vercel.
 - **Root Directory**: `apps/dashboard`
 - **Build Command**: `pnpm build --filter dashboard`
 - **Environment Variables**:
-  - `NEXTAUTH_SECRET`: Generate a random string.
+  - `AUTH_SECRET`: Generate a random string.
   - `NEXT_PUBLIC_API_URL`: Your production API URL.
 
 ### Project 2: Checkout

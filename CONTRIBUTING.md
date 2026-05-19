@@ -21,10 +21,10 @@ cd knotengine
 pnpm install
 
 # 3. Configure environment
-cp .env.example .env
+cp .env.example .env.local
 
-# 4. Start everything
-pnpm start
+# 4. Start Docker + all apps
+pnpm docker:up && pnpm dev
 ```
 
 Press `Ctrl+C` to stop apps. Run `pnpm docker:down` to stop infrastructure.
@@ -162,7 +162,7 @@ Update docs when changing features:
 ## Reporting Issues
 
 - **Bug reports**: [Bug Report Template](https://github.com/qodinger/knotengine/issues/new?template=bug_report.md)
-- **Feature requests**: [Feature Request Template](https://github.com/qodinger/knotengine/issues/new?template=feature_request.md)
+- **Security issues**: See [SECURITY.md](https://github.com/qodinger/knotengine/blob/main/SECURITY.md)
 
 ---
 

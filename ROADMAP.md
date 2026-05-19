@@ -134,7 +134,7 @@
 | Auto-Stake             | Depends on staking                       |
 | Partner Kickbacks      | BD complexity, low ROI                   |
 | Slack/Discord Webhooks | Niche use case                           |
-| Google/GitHub OAuth    | Magic link is simpler, no env config     |
+| Google/GitHub OAuth    | Magic link is primary, OAuth optional    |
 
 ---
 
