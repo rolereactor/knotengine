@@ -43,7 +43,7 @@
     "dotenv": "^16.4.1",
     "ethers": "^6.10.0",
     "fastify": "^4.26.0",
-    "fastify-metrics": "^11.0.0",
+    "fastify-metrics": "^13.2.0",
     "fastify-type-provider-zod": "^1.1.9",
     "ioredis": "^5.9.3",
     "lru-cache": "^11.2.6",
