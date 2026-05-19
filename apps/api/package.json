@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^9.0.0",
+    "@fastify/csrf-protection": "^6.3.0",
     "@fastify/rate-limit": "^9.1.0",
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.0.0",
@@ -38,6 +39,7 @@
     "bip39": "^3.1.0",
     "bitcoinjs-lib": "^6.1.7",
     "bullmq": "^5.70.1",
+    "decimal.js": "^10.4.3",
     "cloudinary": "^2.9.0",
     "dedent": "^1.7.1",
     "dotenv": "^16.4.1",

@@ -16,6 +16,8 @@ export interface IUser extends Document {
   /** Total yield accrued by this user's funds */
   yieldAccruedUsd: number;
   lastYieldSyncAt?: Date;
+  lastFloatInvestAt?: Date;
+  lastFloatAccrueAt?: Date;
   welcomeBonusClaimed: boolean;
   /** TOTP Two-Factor Authentication */
   twoFactorEnabled: boolean;
@@ -41,6 +43,8 @@ const UserSchema: Schema = new Schema(
     creditBalance: { type: Number, default: 0 },
     yieldAccruedUsd: { type: Number, default: 0 },
     lastYieldSyncAt: { type: Date },
+    lastFloatInvestAt: { type: Date },
+    lastFloatAccrueAt: { type: Date },
     welcomeBonusClaimed: { type: Boolean, default: false },
     twoFactorEnabled: { type: Boolean, default: false },
     twoFactorSecret: { type: String },

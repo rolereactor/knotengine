@@ -85,6 +85,23 @@ export const webhookQueueSize = new Gauge({
   labelNames: ["status"] as const,
 });
 
+/**
+ * Webhook dead letter queue size (failed jobs beyond retry limit)
+ */
+export const webhookDLQSize = new Gauge({
+  name: "knotengine_webhook_dlq_size",
+  help: "Number of webhooks in dead letter queue (failed beyond retry)",
+});
+
+/**
+ * Scheduled jobs queue size
+ */
+export const scheduledJobsQueueSize = new Gauge({
+  name: "knotengine_scheduled_jobs_queue_size",
+  help: "Number of scheduled jobs waiting",
+  labelNames: ["queue"] as const,
+});
+
 // ──────────────────────────────────────────────
 // Payment Metrics
 // ──────────────────────────────────────────────
@@ -222,9 +239,11 @@ export async function updateActiveInvoicesMetrics() {
 export async function updateWebhookQueueMetrics() {
   try {
     const { WebhookQueue } = await import("./webhook-queue.js");
+    const { ScheduledJobs } = await import("./scheduled-jobs.js");
 
     if (!WebhookQueue.isReady()) {
       webhookQueueSize.set({ status: "waiting" }, 0);
+      webhookDLQSize.set(0);
       return;
     }
 
@@ -234,6 +253,31 @@ export async function updateWebhookQueueMetrics() {
       webhookQueueSize.set({ status: "active" }, stats.active);
       webhookQueueSize.set({ status: "delayed" }, stats.delayed);
       webhookQueueSize.set({ status: "failed" }, stats.failed);
+      webhookDLQSize.set(stats.failed);
+    }
+
+    const scheduledStats = await ScheduledJobs.getStats();
+    if (scheduledStats) {
+      if (scheduledStats.invoiceExpiration) {
+        scheduledJobsQueueSize.set(
+          { queue: "invoiceExpiration" },
+          scheduledStats.invoiceExpiration.waiting +
+            scheduledStats.invoiceExpiration.active,
+        );
+      }
+      if (scheduledStats.billing) {
+        scheduledJobsQueueSize.set(
+          { queue: "billing" },
+          scheduledStats.billing.waiting + scheduledStats.billing.active,
+        );
+      }
+      if (scheduledStats.floatManagement) {
+        scheduledJobsQueueSize.set(
+          { queue: "floatManagement" },
+          scheduledStats.floatManagement.waiting +
+            scheduledStats.floatManagement.active,
+        );
+      }
     }
   } catch (err) {
     console.warn("Failed to update webhook queue metrics:", err);

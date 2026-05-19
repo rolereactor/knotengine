@@ -58,21 +58,28 @@ export class FloatManager {
     try {
       console.log("🏦 Starting float investment process...");
 
-      // Get total available credit balance across all users
+      // Idempotency: Check if already invested today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const alreadyRan = await User.findOne({
+        lastFloatInvestAt: { $gte: today },
+      });
+      if (alreadyRan) {
+        console.log("🏦 Float investment already ran today, skipping.");
+        return { invested: 0, success: true, error: "Already ran today" };
+      }
+
       const totalBalance = await this.getTotalAvailableBalance();
 
       if (totalBalance < 100) {
-        // Minimum $100 to invest
         console.log(`💸 Insufficient balance for investment: $${totalBalance}`);
         return { invested: 0, success: false, error: "Insufficient balance" };
       }
 
-      // For now, we'll track investment in database (actual DeFi integration requires more setup)
       const invested = await this.trackInvestment(totalBalance);
 
       console.log(`💰 Invested $${invested} from float into yield protocols`);
 
-      // Notify merchants about successful investment
       await this.notifyMerchants({
         title: "Float Investment Complete",
         description: `Successfully invested $${invested} from platform float into yield protocols`,
@@ -144,22 +151,15 @@ export class FloatManager {
    * In production, this would interact with actual DeFi protocols
    */
   private async trackInvestment(amount: number): Promise<number> {
-    // For now, we'll just track the investment in a simple way
-    // In production, this would:
-    // 1. Transfer stablecoins to platform wallet
-    // 2. Approve Aave Pool contract
-    // 3. Supply to Aave
-    // 4. Track yield accrual
+    const investedAmount = Math.floor(amount * 0.8);
 
-    const investedAmount = Math.floor(amount * 0.8); // Invest 80% of available balance
-
-    // Update user records to track invested amount (simplified)
     await User.updateMany(
       { creditBalance: { $gt: 0 } },
       {
         $inc: {
-          yieldAccruedUsd: (investedAmount * 0.05) / 12, // Assuming 5% APY, monthly
+          yieldAccruedUsd: (investedAmount * 0.05) / 12,
         },
+        $set: { lastFloatInvestAt: new Date() },
       },
     );
 
@@ -213,22 +213,32 @@ export class FloatManager {
     try {
       console.log("🌱 Daily yield accrual process...");
 
-      const stats = await this.getFloatStats();
-      const dailyYield = stats.estimatedYield / 365; // Daily yield
+      // Idempotency: Check if already accrued today
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const alreadyRan = await User.findOne({
+        lastFloatAccrueAt: { $gte: today },
+      });
+      if (alreadyRan) {
+        console.log("🌱 Yield accrual already ran today, skipping.");
+        return { totalYield: 0, userCount: 0, success: true };
+      }
 
-      // Update yield for all users with positive balance
+      const stats = await this.getFloatStats();
+      const dailyYield = stats.estimatedYield / 365;
+
       const result = await User.updateMany(
         { creditBalance: { $gt: 0 } },
         {
           $inc: {
-            yieldAccruedUsd: dailyYield / 1000, // Distribute yield proportionally
+            yieldAccruedUsd: dailyYield / 1000,
           },
+          $set: { lastFloatAccrueAt: new Date() },
         },
       );
 
       console.log(`💰 Accrued $${dailyYield.toFixed(2)} in daily yield`);
 
-      // Notify merchants about yield accrual
       await this.notifyMerchants({
         title: "Daily Yield Accrued",
         description: `Platform has accrued $${dailyYield.toFixed(2)} in daily yield from float investments`,

@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import csrf from "@fastify/csrf-protection";
 import metrics from "fastify-metrics";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
@@ -26,6 +27,7 @@ import { connectToDatabase } from "@qodinger/knot-database";
 import { SocketService } from "./infra/socket-service.js";
 import { WebhookQueue } from "./infra/webhook-queue.js";
 import { RedisClient } from "./infra/redis-client.js";
+import { ScheduledJobs } from "./infra/scheduled-jobs.js";
 import { isSelfHosted } from "./core/self-hosted-mode.js";
 import * as Metrics from "./infra/metrics.js";
 
@@ -39,18 +41,19 @@ import packageJson from "../package.json" with { type: "json" };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env.local and .env from monorepo root (Next.js convention)
-const possibleEnvPaths = [
-  path.resolve(__dirname, "../../.env.local"), // Monorepo root from built dist/
-  path.resolve(process.cwd(), ".env.local"), // Current working directory
-  path.resolve(process.cwd(), "../../.env.local"), // Two levels up from CWD
-  path.resolve(__dirname, "../../.env"), // Monorepo root from built dist/
-  path.resolve(process.cwd(), ".env"), // Current working directory
-  path.resolve(process.cwd(), "../../.env"), // Two levels up from CWD
+// Load env files from monorepo root (Next.js convention)
+const env = process.env.NODE_ENV || "development";
+const baseDir = path.resolve(__dirname, "..");
+
+const envFiles = [
+  path.resolve(baseDir, `../../.env.${env}.local`),
+  path.resolve(baseDir, "../../.env.local"),
+  path.resolve(baseDir, `../../.env.${env}`),
+  path.resolve(baseDir, "../../.env"),
 ];
 
 let envLoaded = false;
-for (const envPath of possibleEnvPaths) {
+for (const envPath of envFiles) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
     console.log(`✅ Loaded ${path.basename(envPath)} from ${envPath}`);
@@ -96,11 +99,79 @@ server.register(swaggerUi, {
   },
 });
 
-server.register(cors, {
-  origin: "*",
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : [];
+
+const corsOptions =
+  process.env.NODE_ENV === "production"
+    ? ({
+        origin: (
+          origin: string | undefined,
+          callback: (err: Error | null, allow?: boolean) => void,
+        ) => {
+          if (!origin) {
+            callback(null, true);
+            return;
+          }
+          if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+          }
+          callback(
+            new Error(`Origin '${origin}' not allowed by CORS policy`),
+            false,
+          );
+        },
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] as const,
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "x-api-key",
+          "x-oauth-id",
+          "x-merchant-id",
+          "x-internal-secret",
+        ],
+        credentials: true,
+      } as any)
+    : {
+        origin: "*",
+        methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"] as const,
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "x-api-key",
+          "x-oauth-id",
+          "x-merchant-id",
+          "x-internal-secret",
+        ],
+      };
+
+server.register(cors, corsOptions);
+
+// CSRF Protection: Prevents cross-site request forgery on state-changing requests
+// Only applies to non-API-key authenticated endpoints (browser-based sessions)
+server.register(csrf, {
+  // @ts-expect-error - cookie options not in types but valid at runtime
+  cookie: {
+    key: "csrf-token",
+    httpOnly: true,
+    sameSite: "strict",
+  },
+  // Skip CSRF for API-key authenticated routes (those use cryptographic signatures)
+  skipRoutes: (req: any) => {
+    const apiKey = req.headers["x-api-key"];
+    if (apiKey) return true;
+    // Skip for webhook callbacks (external systems)
+    if (req.url?.includes("/v1/webhooks/")) return true;
+    // Skip for simulation endpoints (development only)
+    if (req.url?.includes("/v1/simulation/")) return true;
+    return false;
+  },
 });
 
 // 📊 Prometheus Monitoring
+// @ts-expect-error - fastify-metrics types are incompatible with our Fastify version
 server.register(metrics as any, {
   endpoint: "/metrics",
   defaultMetrics: { enabled: true },
@@ -181,11 +252,18 @@ server.get<{ Params: { currency: string } }>(
 // ──────────────────────────────────────────────
 // Background Jobs
 // ──────────────────────────────────────────────
-let expirationInterval: NodeJS.Timeout;
-let webhookCatchupInterval: NodeJS.Timeout;
-let billingCheckInterval: NodeJS.Timeout;
+let webhookMetricsInterval: NodeJS.Timeout;
 
 function startBackgroundJobs() {
+  // Initialize BullMQ Scheduled Jobs (durable, crash-resilient)
+  ScheduledJobs.init().catch((err) => {
+    console.warn(
+      "⚠️ Failed to initialize ScheduledJobs, falling back to in-memory jobs:",
+      err,
+    );
+    startInMemoryJobs();
+  });
+
   // Initialize Webhook Queue (if Redis available)
   WebhookQueue.init().catch((err) => {
     console.warn(
@@ -194,8 +272,27 @@ function startBackgroundJobs() {
     );
   });
 
+  // Update webhook queue metrics every 10 seconds
+  // (BullMQ handles job scheduling; we just monitor)
+  webhookMetricsInterval = setInterval(async () => {
+    try {
+      await Metrics.updateWebhookQueueMetrics();
+    } catch (err) {
+      console.warn("Failed to update webhook queue metrics:", err);
+    }
+  }, 10 * 1000);
+
+  console.log(
+    "⏰ Background jobs started (durable BullMQ + webhook monitoring)",
+  );
+}
+
+function startInMemoryJobs() {
+  // Fallback for environments without Redis
+  console.log("⚠️ Using in-memory job fallback (less resilient)");
+
   // Expire stale invoices every 60 seconds
-  expirationInterval = setInterval(async () => {
+  const expirationInterval = setInterval(async () => {
     try {
       await ConfirmationEngine.expireStaleInvoices();
       await Metrics.updateActiveInvoicesMetrics();
@@ -204,21 +301,10 @@ function startBackgroundJobs() {
     }
   }, 60 * 1000);
 
-  // Update webhook queue metrics every 10 seconds
-  setInterval(async () => {
-    try {
-      await Metrics.updateWebhookQueueMetrics();
-    } catch (err) {
-      console.warn("Failed to update webhook queue metrics:", err);
-    }
-  }, 10 * 1000);
-
   // Retry failed webhook deliveries every 5 minutes
-  // Only needed if queue is not available (fallback mode)
-  webhookCatchupInterval = setInterval(
+  const webhookCatchupInterval = setInterval(
     async () => {
       try {
-        // If queue is ready, it handles retries automatically
         if (!WebhookQueue.isReady()) {
           await WebhookDispatcher.dispatchPending();
         }
@@ -229,8 +315,8 @@ function startBackgroundJobs() {
     5 * 60 * 1000,
   );
 
-  // Check for monthly billing every day at midnight
-  billingCheckInterval = setInterval(
+  // Check for monthly billing daily
+  const billingCheckInterval = setInterval(
     async () => {
       try {
         await SubscriptionBilling.getInstance().checkAndProcessBilling();
@@ -238,11 +324,11 @@ function startBackgroundJobs() {
         console.error("Billing check error:", err);
       }
     },
-    24 * 60 * 60 * 1000, // Run daily
+    24 * 60 * 60 * 1000,
   );
 
-  // Invest float and accrue yield daily
-  setInterval(
+  // Float management daily
+  const floatInterval = setInterval(
     async () => {
       try {
         await FloatManager.getInstance().investFloat();
@@ -251,12 +337,16 @@ function startBackgroundJobs() {
         console.error("Float management error:", err);
       }
     },
-    24 * 60 * 60 * 1000, // Run daily
+    24 * 60 * 60 * 1000,
   );
 
-  console.log(
-    "⏰ Background jobs started (expiration + webhook catchup + billing)",
-  );
+  // Store intervals for cleanup (needed for in-memory fallback)
+  (globalThis as any).__jobIntervals = {
+    expirationInterval,
+    webhookCatchupInterval,
+    billingCheckInterval,
+    floatInterval,
+  };
 }
 
 // ──────────────────────────────────────────────
@@ -265,10 +355,17 @@ function startBackgroundJobs() {
 async function gracefulShutdown() {
   console.log("\n🛑 Shutting down gracefully...");
 
-  // Stop background jobs
-  clearInterval(expirationInterval);
-  clearInterval(webhookCatchupInterval);
-  clearInterval(billingCheckInterval);
+  // Clear any in-memory job intervals
+  const intervals = (globalThis as any).__jobIntervals;
+  if (intervals) {
+    Object.values(intervals).forEach((interval) =>
+      clearInterval(interval as any),
+    );
+  }
+  clearInterval(webhookMetricsInterval);
+
+  // Close scheduled jobs
+  await ScheduledJobs.shutdown();
 
   // Close webhook queue
   await WebhookQueue.shutdown();

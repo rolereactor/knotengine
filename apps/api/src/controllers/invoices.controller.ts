@@ -12,6 +12,7 @@ import { ConfirmationEngine } from "../core/confirmation-engine.js";
 import { PriceOracle } from "../infra/price-feed.js";
 import { BlockchainProviderPool } from "../infra/provider-pool.js";
 import * as Metrics from "../infra/metrics.js";
+import { CryptoMath } from "../core/crypto-math.js";
 
 export const InvoicesController = {
   createInvoice: async (request: any, reply: FastifyReply) => {
@@ -124,7 +125,7 @@ export const InvoicesController = {
 
       // Transparent Pricing: Customer pays exact market rate
       const customerPrice = marketPrice;
-      const cryptoAmount = parseFloat((amount_usd / customerPrice).toFixed(8));
+      const cryptoAmount = CryptoMath.divide(amount_usd, customerPrice);
 
       // Derive a unique payment address
       let payAddress: string;
@@ -234,20 +235,18 @@ export const InvoicesController = {
       let totalCryptoAmount = cryptoAmount;
 
       // A. Calculate Base Platform Fee
-      const rawBaseFeeUsd = amount_usd * activeFeeRate;
-      feeUsd = parseFloat(Math.max(rawBaseFeeUsd, minFeeUsd).toFixed(2));
+      const rawBaseFeeUsd = CryptoMath.multiply(amount_usd, activeFeeRate);
+      feeUsd = CryptoMath.toNumber(Math.max(rawBaseFeeUsd, minFeeUsd), 2);
 
       // B. Determine logic based on Fee Responsibility
       const feePayer = merchant.feeResponsibility || "merchant";
 
       if (feePayer === "client") {
         // Add the fee to the invoice amount (pass to client as a hidden spread)
-        totalAmountUsd = amount_usd + feeUsd;
+        totalAmountUsd = CryptoMath.add(amount_usd, feeUsd);
 
         // Recalculate the crypto amount the client actually needs to pay
-        totalCryptoAmount = parseFloat(
-          (totalAmountUsd / customerPrice).toFixed(8),
-        );
+        totalCryptoAmount = CryptoMath.divide(totalAmountUsd, customerPrice);
       } else {
         // Merchant pays the fee out of their own balance (transparent)
         totalAmountUsd = amount_usd;
@@ -255,8 +254,9 @@ export const InvoicesController = {
       }
 
       // feeCrypto is just for tracking/display relative to the payment
-      feeCrypto = parseFloat(
-        ((feeUsd / amount_usd) * totalCryptoAmount).toFixed(8),
+      feeCrypto = CryptoMath.divide(
+        CryptoMath.multiply(feeUsd, totalCryptoAmount),
+        amount_usd,
       );
 
       // 7. Create the invoice
@@ -400,8 +400,8 @@ export const InvoicesController = {
       invoice_id: invoice.invoiceId,
       amount_usd: invoice.amountUsd,
       crypto_amount: invoice.cryptoAmount,
-      crypto_amount_received: parseFloat(
-        (invoice.cryptoAmountReceived || 0).toFixed(8),
+      crypto_amount_received: CryptoMath.toFixed(
+        invoice.cryptoAmountReceived || 0,
       ),
       crypto_currency: invoice.cryptoCurrency,
       pay_address: invoice.payAddress,
@@ -479,8 +479,8 @@ export const InvoicesController = {
         invoice_id: inv.invoiceId,
         amount_usd: inv.amountUsd,
         crypto_amount: inv.cryptoAmount,
-        crypto_amount_received: parseFloat(
-          (inv.cryptoAmountReceived || 0).toFixed(8),
+        crypto_amount_received: CryptoMath.toFixed(
+          inv.cryptoAmountReceived || 0,
         ),
         crypto_currency: inv.cryptoCurrency,
         pay_address: inv.payAddress,

@@ -51,6 +51,11 @@ const WebhookEventSchema: Schema = new Schema(
 WebhookEventSchema.index({ toAddress: 1 });
 WebhookEventSchema.index({ txHash: 1 });
 WebhookEventSchema.index({ processed: 1 });
+// Composite index for idempotency check: prevents replay of same (txHash, invoiceId, asset)
+WebhookEventSchema.index(
+  { txHash: 1, invoiceId: 1, asset: 1 },
+  { unique: true },
+);
 // 30-day Retention: MongoDB will auto-delete events older than 30 days
 WebhookEventSchema.index(
   { createdAt: 1 },

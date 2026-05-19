@@ -78,5 +78,22 @@ describe("Environment Loading", () => {
       const envExamplePath = path.resolve(monorepoRoot, ".env.example");
       expect(fs.existsSync(envExamplePath)).toBe(true);
     });
+
+    it(".env.production should exist at monorepo root", () => {
+      const monorepoRoot = path.resolve(__dirname, "../../..");
+      const envProdPath = path.resolve(monorepoRoot, ".env.production");
+      expect(fs.existsSync(envProdPath)).toBe(true);
+    });
+  });
+
+  describe("Environment-specific env files", () => {
+    it("should support env-specific files (.env.development or .env.production)", () => {
+      const monorepoRoot = path.resolve(__dirname, "../../..");
+      const envDevPath = path.resolve(monorepoRoot, ".env.development");
+      const envProdPath = path.resolve(monorepoRoot, ".env.production");
+      expect(fs.existsSync(envDevPath) || fs.existsSync(envProdPath)).toBe(
+        true,
+      );
+    });
   });
 });
