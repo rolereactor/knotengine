@@ -52,7 +52,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tsup": "^8.5.1",
-    "tsx": "^4.7.0",
+    "tsx": "^4.22.2",
     "turbo": "latest"
   },
   "packageManager": "pnpm@9.0.0"
