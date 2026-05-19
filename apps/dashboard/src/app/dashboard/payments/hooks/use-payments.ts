@@ -53,7 +53,10 @@ export function usePayments() {
     { revalidateOnFocus: false },
   );
 
-  const invoices = invoicesData?.data ?? [];
+  const invoices = useMemo(
+    () => invoicesData?.data ?? [],
+    [invoicesData?.data],
+  );
   const loading = invoicesLoading || statsLoading;
   const plan = (statsData?.currentPlan as MerchantPlan) ?? undefined;
 
