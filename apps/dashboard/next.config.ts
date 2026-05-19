@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import path from "path";
 
 // Load root .env for monorepo development
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env.local") });
 
 const nextConfig: NextConfig = {
   output: "standalone",
