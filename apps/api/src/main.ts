@@ -39,14 +39,14 @@ import packageJson from "../package.json" with { type: "json" };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env from monorepo root (standard convention)
+// Load .env.local and .env from monorepo root (Next.js convention)
 const possibleEnvPaths = [
+  path.resolve(__dirname, "../../.env.local"), // Monorepo root from built dist/
+  path.resolve(process.cwd(), ".env.local"), // Current working directory
+  path.resolve(process.cwd(), "../../.env.local"), // Two levels up from CWD
   path.resolve(__dirname, "../../.env"), // Monorepo root from built dist/
   path.resolve(process.cwd(), ".env"), // Current working directory
   path.resolve(process.cwd(), "../../.env"), // Two levels up from CWD
-  // Fallback to .env.local (legacy)
-  path.resolve(__dirname, "../../.env.local"),
-  path.resolve(process.cwd(), ".env.local"),
 ];
 
 let envLoaded = false;
@@ -61,7 +61,7 @@ for (const envPath of possibleEnvPaths) {
 
 if (!envLoaded) {
   console.warn(
-    `⚠️  No ${envFileName} file found. Relying on system environment variables.`,
+    "⚠️  No .env file found. Relying on system environment variables.",
   );
 }
 
