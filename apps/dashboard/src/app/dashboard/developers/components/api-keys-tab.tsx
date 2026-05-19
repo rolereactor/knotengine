@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Copy,
@@ -9,19 +9,19 @@ import {
   Terminal,
   ExternalLink,
   Key,
-} from "lucide-react";
-import { cn, dedent } from "@/lib/utils";
-import { CodeBlock } from "@/components/ui/code-block";
+} from 'lucide-react';
+import { cn, dedent } from '@/lib/utils';
+import { CodeBlock } from '@/components/ui/code-block';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -29,7 +29,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,7 +37,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   Table,
   TableBody,
@@ -45,11 +45,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useApiKeys } from "../hooks/use-api-keys";
+} from '@/components/ui/table';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useApiKeys } from '../hooks/use-api-keys';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5050";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5050';
 
 export function ApiKeysTab() {
   const {
@@ -108,7 +108,7 @@ export function ApiKeysTab() {
                       <span>
                         {session?.user?.apiKey
                           ? `knot_sk_...${session.user.apiKey.slice(-4)}`
-                          : "knot_sk_********************"}
+                          : 'knot_sk_********************'}
                       </span>
                       <Badge
                         variant="outline"
@@ -141,7 +141,7 @@ export function ApiKeysTab() {
                             onClick={() =>
                               copyToClipboard(
                                 session.user.apiKey as string,
-                                "sk",
+                                'sk',
                               )
                             }
                           >
@@ -198,7 +198,8 @@ export function ApiKeysTab() {
                   </p>
                   <div className="flex pt-2 text-xs">
                     <a
-                      href="#"
+                      href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                      target="_blank"
                       className="inline-flex items-center gap-1.5 font-medium text-slate-300 transition-colors hover:text-white"
                     >
                       API Reference <ExternalLink className="size-3" />
@@ -211,23 +212,23 @@ export function ApiKeysTab() {
                 <div className="flex items-center">
                   <div className="flex rounded-lg border border-white/5 bg-white/5 p-1">
                     <button
-                      onClick={() => setSelectedIntegrationLanguage("nodejs")}
+                      onClick={() => setSelectedIntegrationLanguage('nodejs')}
                       className={cn(
-                        "rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all",
-                        selectedIntegrationLanguage === "nodejs"
-                          ? "border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm"
-                          : "text-slate-400 hover:text-slate-200",
+                        'rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all',
+                        selectedIntegrationLanguage === 'nodejs'
+                          ? 'border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200',
                       )}
                     >
                       Node.js SDK
                     </button>
                     <button
-                      onClick={() => setSelectedIntegrationLanguage("curl")}
+                      onClick={() => setSelectedIntegrationLanguage('curl')}
                       className={cn(
-                        "rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all",
-                        selectedIntegrationLanguage === "curl"
-                          ? "border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm"
-                          : "text-slate-400 hover:text-slate-200",
+                        'rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all',
+                        selectedIntegrationLanguage === 'curl'
+                          ? 'border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm'
+                          : 'text-slate-400 hover:text-slate-200',
                       )}
                     >
                       cURL
@@ -235,7 +236,7 @@ export function ApiKeysTab() {
                   </div>
                 </div>
 
-                {selectedIntegrationLanguage === "curl" ? (
+                {selectedIntegrationLanguage === 'curl' ? (
                   <CodeBlock
                     language="bash"
                     className="w-full"
@@ -298,7 +299,10 @@ export function ApiKeysTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!newKey} onOpenChange={(open) => !open && setNewKey(null)}>
+      <Dialog
+        open={Boolean(newKey)}
+        onOpenChange={(open) => !open && setNewKey(null)}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>API Key Generated</DialogTitle>
@@ -309,15 +313,15 @@ export function ApiKeysTab() {
           <div className="my-4 flex items-center space-x-2">
             <Input
               readOnly
-              value={newKey || ""}
+              value={newKey || ''}
               className="font-mono text-sm"
             />
             <Button
               size="icon"
               variant="secondary"
-              onClick={() => newKey && copyToClipboard(newKey, "newkey")}
+              onClick={() => newKey && copyToClipboard(newKey, 'newkey')}
             >
-              {copied === "newkey" ? (
+              {copied === 'newkey' ? (
                 <Check className="h-4 w-4" />
               ) : (
                 <Copy className="h-4 w-4" />

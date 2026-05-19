@@ -5,45 +5,45 @@ import {
   Zap,
   Server,
   Cloud,
-} from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { TerminalDemo } from "@/components/terminal-demo";
+} from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { TerminalDemo } from '@/components/terminal-demo';
 
 const features = [
   {
     icon: Zap,
-    title: "One API, any chain",
+    title: 'One API, any chain',
     description:
-      "Single integration for Bitcoin, Litecoin, Ethereum and Polygon. Accept BTC, ETH, LTC, USDT and USDC without changing a line of code.",
-    className: "md:col-span-2 md:row-span-1",
+      'Single integration for Bitcoin, Litecoin, Ethereum and Polygon. Accept BTC, ETH, LTC, USDT and USDC without changing a line of code.',
+    className: 'md:col-span-2 md:row-span-1',
   },
   {
     icon: ShieldCheck,
-    title: "Non-custodial by design",
+    title: 'Non-custodial by design',
     description:
-      "We never hold your keys. Every payment flows directly to your wallet via HD key derivation. Zero counterparty risk.",
-    className: "md:col-span-1 md:row-span-1",
+      'We never hold your keys. Every payment flows directly to your wallet via HD key derivation. Zero counterparty risk.',
+    className: 'md:col-span-1 md:row-span-1',
   },
   {
     icon: Code,
-    title: "Webhook notifications",
+    title: 'Webhook notifications',
     description:
-      "Signed webhook delivery with automatic retries. Track every payment lifecycle event in real-time.",
-    className: "md:col-span-1 md:row-span-1",
+      'Signed webhook delivery with automatic retries. Track every payment lifecycle event in real-time.',
+    className: 'md:col-span-1 md:row-span-1',
   },
   {
-    title: "Per-invoice deposit addresses",
+    title: 'Per-invoice deposit addresses',
     description:
-      "Unique BIP-44 derived address for every invoice. No address reuse. Maximum privacy for you and your customers.",
-    className: "md:col-span-1 md:row-span-1",
+      'Unique BIP-44 derived address for every invoice. No address reuse. Maximum privacy for you and your customers.',
+    className: 'md:col-span-1 md:row-span-1',
     icon: ArrowRight,
   },
   {
-    title: "Real-time detection",
+    title: 'Real-time detection',
     description:
-      "On-chain payment detection in under 3 seconds. Dual-provider monitoring with automatic failover between Tatum and Alchemy.",
-    className: "md:col-span-1 md:row-span-1",
+      'On-chain payment detection in under 3 seconds. Dual-provider monitoring with automatic failover between Tatum and Alchemy.',
+    className: 'md:col-span-1 md:row-span-1',
     icon: Zap,
   },
 ];
@@ -58,8 +58,8 @@ export default function MarketingPage() {
           className="absolute inset-0 opacity-[0.015]"
           style={{
             backgroundImage:
-              "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
+              'linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
           }}
         />
         <div className="absolute top-1/4 left-1/2 h-96 w-96 -translate-x-1/2 rounded-full bg-white/2 blur-3xl" />
@@ -68,7 +68,7 @@ export default function MarketingPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 duration-700">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
             <span className="text-xs font-medium text-zinc-400">
-              Open source · AGPL-3.0
+              Self-host free · AGPL-3.0 · Cloud coming soon
             </span>
           </div>
 
@@ -92,7 +92,7 @@ export default function MarketingPage() {
               className="h-11 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
               asChild
             >
-              <Link href="/dashboard">
+              <Link href="/pricing">
                 Get Started Free
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -103,7 +103,12 @@ export default function MarketingPage() {
               className="h-11 rounded-md border-white/10 bg-white/5 text-white transition-all hover:bg-white/10"
               asChild
             >
-              <Link href="/docs">Read the docs</Link>
+              <Link
+                href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                target="_blank"
+              >
+                Read the docs
+              </Link>
             </Button>
           </div>
 
@@ -177,7 +182,10 @@ export default function MarketingPage() {
                 className="w-full rounded-md border-white/10 bg-white/5 font-bold text-white transition-all hover:bg-white/10"
                 asChild
               >
-                <Link href="/docs">
+                <Link
+                  href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                  target="_blank"
+                >
                   Deploy yourself
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -245,7 +253,7 @@ export default function MarketingPage() {
             {features.map((feature, i) => (
               <div
                 key={feature.title}
-                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/[0.04] ${feature.className || ""}`}
+                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/[0.04] ${feature.className || ''}`}
                 style={{ animationDelay: `${i * 100}ms` }}
               >
                 {feature.icon && (
@@ -280,24 +288,24 @@ export default function MarketingPage() {
           <div className="space-y-12">
             {[
               {
-                step: "1",
-                title: "Deploy KnotEngine",
+                step: '1',
+                title: 'Deploy KnotEngine',
                 description:
-                  "Self-host with one command or sign up for Cloud. Configure your wallet addresses and API keys.",
-                action: "curl -fsSL install.sh | bash",
+                  'Self-host with one command or sign up for Cloud. Configure your wallet addresses and API keys.',
+                action: 'curl -fsSL install.sh | bash',
               },
               {
-                step: "2",
-                title: "Create an invoice",
+                step: '2',
+                title: 'Create an invoice',
                 description:
-                  "Use the SDK to create an invoice. Redirect your customer to the hosted checkout page.",
-                action: "knot.createInvoice({ amount_usd: 49.99 })",
+                  'Use the SDK to create an invoice. Redirect your customer to the hosted checkout page.',
+                action: 'knot.createInvoice({ amount_usd: 49.99 })',
               },
               {
-                step: "3",
-                title: "Receive payment",
+                step: '3',
+                title: 'Receive payment',
                 description:
-                  "Customer pays on-chain. KnotEngine detects the transaction and sends you a webhook. Fulfill the order.",
+                  'Customer pays on-chain. KnotEngine detects the transaction and sends you a webhook. Fulfill the order.',
                 action: 'event === "invoice.confirmed"',
               },
             ].map((item, i) => (
@@ -342,7 +350,7 @@ export default function MarketingPage() {
               className="h-11 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200"
               asChild
             >
-              <Link href="/dashboard">
+              <Link href="/pricing">
                 Get Started Free
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   Command,
@@ -7,10 +7,10 @@ import {
   LogOut,
   Github,
   ArrowUpRight,
-} from "lucide-react";
-import Link from "next/link";
-import { signOut } from "next-auth/react";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react';
+import Link from 'next/link';
+import { signOut } from 'next-auth/react';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +18,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type MarketingHeaderProps = {
   user?: {
@@ -94,7 +94,8 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
               <DropdownMenuContent className="mt-2 w-56 rounded-xl border-white/10 bg-[#0a0a0a]">
                 <DropdownMenuItem asChild className="cursor-pointer p-3">
                   <Link
-                    href="/docs"
+                    href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                    target="_blank"
                     className="flex items-center justify-between"
                   >
                     <span className="text-sm text-zinc-400">Documentation</span>
@@ -147,13 +148,13 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
                   className="flex items-center gap-2 px-2 text-zinc-400 hover:text-white"
                 >
                   <Avatar className="h-7 w-7 border border-white/10">
-                    <AvatarImage src={user.image || ""} alt={user.name || ""} />
+                    <AvatarImage src={user.image || ''} alt={user.name || ''} />
                     <AvatarFallback className="bg-white/10 text-[10px] text-white">
-                      {user.name?.[0]?.toUpperCase() || "U"}
+                      {user.name?.[0]?.toUpperCase() || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   <span className="hidden text-sm font-medium sm:inline">
-                    {user.name || "Account"}
+                    {user.name || 'Account'}
                   </span>
                   <ChevronDown className="h-3 w-3" />
                 </Button>
@@ -166,10 +167,10 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
                 <DropdownMenuLabel className="p-4 font-normal">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm leading-none font-bold text-white">
-                      {user.name || "Merchant Owner"}
+                      {user.name || 'Merchant Owner'}
                     </p>
                     <p className="text-xs leading-none text-zinc-500">
-                      {user.email || ""}
+                      {user.email || ''}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -186,7 +187,7 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
                 <DropdownMenuSeparator className="bg-white/5" />
                 <DropdownMenuItem
                   className="cursor-pointer p-3 text-zinc-400 hover:text-red-400 focus:text-red-400"
-                  onClick={() => signOut({ callbackUrl: "/" })}
+                  onClick={() => signOut({ callbackUrl: '/' })}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out

@@ -1,6 +1,6 @@
-import { Check, ArrowRight, Server, Cloud } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Check, ArrowRight, Server, Cloud } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export default function PricingPage() {
   return (
@@ -34,13 +34,13 @@ export default function PricingPage() {
 
               <ul className="mb-8 space-y-3">
                 {[
-                  "Unlimited transactions",
-                  "All 7 currencies (BTC, ETH, LTC, USDT, USDC)",
-                  "Full API & Dashboard",
-                  "Webhook delivery with retries",
-                  "Analytics & reporting",
-                  "Community support",
-                  "AGPL-3.0 license",
+                  'Unlimited transactions',
+                  'All 7 currencies (BTC, ETH, LTC, USDT, USDC)',
+                  'Full API & Dashboard',
+                  'Webhook delivery with retries',
+                  'Analytics & reporting',
+                  'Community support',
+                  'AGPL-3.0 license',
                 ].map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
@@ -53,7 +53,10 @@ export default function PricingPage() {
                 className="mt-auto w-full rounded-md bg-white font-bold text-black shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200"
                 asChild
               >
-                <Link href="/docs">
+                <Link
+                  href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                  target="_blank"
+                >
                   Deploy yourself
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
@@ -84,12 +87,12 @@ export default function PricingPage() {
 
               <ul className="mb-8 space-y-3">
                 {[
-                  "Everything in Self-Host",
-                  "Zero server maintenance",
-                  "Managed backups & updates",
-                  "Custom domains with auto-SSL",
-                  "Team collaboration (RBAC)",
-                  "Priority support",
+                  'Everything in Self-Host',
+                  'Zero server maintenance',
+                  'Managed backups & updates',
+                  'Custom domains with auto-SSL',
+                  'Team collaboration (RBAC)',
+                  'Priority support',
                 ].map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-zinc-600" />
@@ -130,19 +133,19 @@ export default function PricingPage() {
           <div className="space-y-8">
             {[
               {
-                q: "Is self-hosting really free?",
-                a: "Yes. KnotEngine is open-source under AGPL-3.0. You can run it on your own infrastructure with no platform fees. You only pay for your VPS and infrastructure costs.",
+                q: 'Is self-hosting really free?',
+                a: 'Yes. KnotEngine is open-source under AGPL-3.0. You can run it on your own infrastructure with no platform fees. You only pay for your VPS and infrastructure costs.',
               },
               {
                 q: "What's the difference between Self-Host and Cloud?",
-                a: "Same codebase, same features. Self-host means you manage the servers. Cloud means we manage everything — servers, backups, scaling, SSL, and updates.",
+                a: 'Same codebase, same features. Self-host means you manage the servers. Cloud means we manage everything — servers, backups, scaling, SSL, and updates.',
               },
               {
-                q: "Can I migrate from Self-Host to Cloud later?",
+                q: 'Can I migrate from Self-Host to Cloud later?',
                 a: "Yes. Since it's the same codebase, migration is straightforward. We'll provide migration tools when Cloud launches.",
               },
               {
-                q: "Do you take a cut of my transactions?",
+                q: 'Do you take a cut of my transactions?',
                 a: "No. When self-hosting, you keep 100% of your revenue. KnotEngine charges zero platform fees. You set your own fee structure if you're offering payment services to others.",
               },
             ].map((faq) => (

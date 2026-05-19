@@ -1,6 +1,6 @@
-import { useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect } from 'react';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Loader2,
   Send,
@@ -13,24 +13,24 @@ import {
   AlertCircle,
   CheckCircle2,
   XCircle,
-} from "lucide-react";
-import { cn, dedent } from "@/lib/utils";
+} from 'lucide-react';
+import { cn, dedent } from '@/lib/utils';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { CodeBlock } from "@/components/ui/code-block";
-import { Badge } from "@/components/ui/badge";
-import { useWebhooks } from "../hooks/use-webhooks";
-import { useWebhookDeliveries } from "../hooks/use-webhook-deliveries";
-import { webhookSchema, WebhookFormData } from "../../settings/types";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { CodeBlock } from '@/components/ui/code-block';
+import { Badge } from '@/components/ui/badge';
+import { useWebhooks } from '../hooks/use-webhooks';
+import { useWebhookDeliveries } from '../hooks/use-webhook-deliveries';
+import { webhookSchema, WebhookFormData } from '../../settings/types';
 
 export function WebhooksTab() {
   const {
@@ -74,7 +74,7 @@ export function WebhooksTab() {
       webhookUrl: webhookData.webhookUrl,
       webhookEvents: webhookData.webhookEvents,
     },
-    mode: "onChange",
+    mode: 'onChange',
   });
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export function WebhooksTab() {
             ) : (
               <Save className="size-3" />
             )}
-            {webhookSuccess ? "Saved" : "Save Changes"}
+            {webhookSuccess ? 'Saved' : 'Save Changes'}
           </Button>
         </div>
       </div>
@@ -146,16 +146,16 @@ export function WebhooksTab() {
             </Label>
             <Input
               id="webhookUrl"
-              {...register("webhookUrl", {
+              {...register('webhookUrl', {
                 onBlur: (e) => {
                   const val = e.target.value.trim();
                   if (
                     val &&
-                    !val.startsWith("http://") &&
-                    !val.startsWith("https://") &&
-                    !val.startsWith("/")
+                    !val.startsWith('http://') &&
+                    !val.startsWith('https://') &&
+                    !val.startsWith('/')
                   ) {
-                    setValue("webhookUrl", `https://${val}`, {
+                    setValue('webhookUrl', `https://${val}`, {
                       shouldDirty: true,
                       shouldValidate: true,
                     });
@@ -164,9 +164,9 @@ export function WebhooksTab() {
               })}
               placeholder="https://api.myapp.com/webhooks"
               className={cn(
-                "bg-background/50 font-mono text-xs focus-visible:ring-emerald-500/30",
+                'bg-background/50 font-mono text-xs focus-visible:ring-emerald-500/30',
                 errors.webhookUrl &&
-                  "border-destructive focus-visible:ring-destructive",
+                  'border-destructive focus-visible:ring-destructive',
               )}
             />
             {errors.webhookUrl && (
@@ -191,14 +191,14 @@ export function WebhooksTab() {
                 disabled={rotatingWebhookSecret}
                 className="text-destructive hover:bg-destructive/5 hover:text-destructive h-6 text-[9px] font-bold tracking-wider uppercase"
               >
-                {rotatingWebhookSecret ? "Rotating..." : "Rotate Secret"}
+                {rotatingWebhookSecret ? 'Rotating...' : 'Rotate Secret'}
               </Button>
             </div>
             <div className="relative flex items-center gap-2">
               <div className="relative flex-1">
                 <Input
                   id="secret"
-                  type={showWebhookSecret ? "text" : "password"}
+                  type={showWebhookSecret ? 'text' : 'password'}
                   value={webhookData.webhookSecret}
                   readOnly
                   className="bg-background/50 pr-16 font-mono text-xs focus-visible:ring-0"
@@ -211,7 +211,7 @@ export function WebhooksTab() {
                   onClick={() => setShowWebhookSecret(!showWebhookSecret)}
                   disabled={!webhookData.webhookSecret}
                 >
-                  {showWebhookSecret ? "Hide" : "Reveal"}
+                  {showWebhookSecret ? 'Hide' : 'Reveal'}
                 </Button>
               </div>
               <Button
@@ -219,10 +219,10 @@ export function WebhooksTab() {
                 size="icon"
                 className="h-9 w-9 shrink-0"
                 onClick={() =>
-                  copyToClipboard(webhookData.webhookSecret, "secret")
+                  copyToClipboard(webhookData.webhookSecret, 'secret')
                 }
               >
-                {copied === "secret" ? (
+                {copied === 'secret' ? (
                   <Check className="size-4 text-emerald-500" />
                 ) : (
                   <Copy className="text-muted-foreground size-4" />
@@ -239,10 +239,10 @@ export function WebhooksTab() {
               </span>
             </div>
             <p className="text-muted-foreground text-[10.5px] leading-relaxed">
-              Always verify the{" "}
+              Always verify the{' '}
               <code className="font-mono text-emerald-600">
                 x-knot-signature
-              </code>{" "}
+              </code>{' '}
               header using your secret before processing webhooks to ensure the
               source is authentic.
             </p>
@@ -267,19 +267,19 @@ export function WebhooksTab() {
               <div className="mt-2 grid grid-cols-1 gap-1.5">
                 {[
                   {
-                    id: "e-confirmed",
-                    key: "invoice.confirmed",
-                    desc: "Fired when an invoice reaches required confirmations.",
+                    id: 'e-confirmed',
+                    key: 'invoice.confirmed',
+                    desc: 'Fired when an invoice reaches required confirmations.',
                   },
                   {
-                    id: "e-mempool",
-                    key: "invoice.mempool_detected",
-                    desc: "Fired immediately when a transaction is seen in mempool.",
+                    id: 'e-mempool',
+                    key: 'invoice.mempool_detected',
+                    desc: 'Fired immediately when a transaction is seen in mempool.',
                   },
                   {
-                    id: "e-failed",
-                    key: "invoice.failed",
-                    desc: "Fired when an invoice expires or remains unpaid.",
+                    id: 'e-failed',
+                    key: 'invoice.failed',
+                    desc: 'Fired when an invoice expires or remains unpaid.',
                   },
                 ].map((item) => (
                   <div
@@ -387,10 +387,10 @@ export function WebhooksTab() {
                   </h4>
                 </div>
                 <p className="max-w-sm text-[13px] leading-relaxed text-slate-400">
-                  Webhooks are signed with a{" "}
+                  Webhooks are signed with a{' '}
                   <code className="relative z-10 mx-1 rounded bg-white/5 px-1 py-0.5 text-xs text-slate-300 select-none">
                     HMAC-SHA256
-                  </code>{" "}
+                  </code>{' '}
                   hash of the raw request body using your signing secret. We
                   recommend using a timing-safe comparison to prevent
                   side-channel attacks.
@@ -401,7 +401,11 @@ export function WebhooksTab() {
                     className="h-auto p-0 text-xs text-slate-300 hover:text-white"
                     asChild
                   >
-                    <a href="#">
+                    <a
+                      href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       View docs <ExternalLink className="ml-1.5 size-3" />
                     </a>
                   </Button>
@@ -413,23 +417,23 @@ export function WebhooksTab() {
               <div className="flex items-center">
                 <div className="flex rounded-lg border border-white/5 bg-white/5 p-1">
                   <button
-                    onClick={() => setSelectedLanguage("nodejs-sdk")}
+                    onClick={() => setSelectedLanguage('nodejs-sdk')}
                     className={cn(
-                      "rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all",
-                      selectedLanguage === "nodejs-sdk"
-                        ? "border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm"
-                        : "text-slate-400 hover:text-slate-200",
+                      'rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all',
+                      selectedLanguage === 'nodejs-sdk'
+                        ? 'border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200',
                     )}
                   >
                     Node.js SDK
                   </button>
                   <button
-                    onClick={() => setSelectedLanguage("nodejs")}
+                    onClick={() => setSelectedLanguage('nodejs')}
                     className={cn(
-                      "rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all",
-                      selectedLanguage === "nodejs"
-                        ? "border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm"
-                        : "text-slate-400 hover:text-slate-200",
+                      'rounded-md px-3 py-1 text-[10px] font-bold tracking-tight uppercase transition-all',
+                      selectedLanguage === 'nodejs'
+                        ? 'border border-white/5 bg-[#0A0A0A] text-slate-100 shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200',
                     )}
                   >
                     Node.js
@@ -441,7 +445,7 @@ export function WebhooksTab() {
                 className="h-100"
                 language="typescript"
                 code={
-                  selectedLanguage === "nodejs-sdk"
+                  selectedLanguage === 'nodejs-sdk'
                     ? dedent`
                         import { KnotClient } from '@qodinger/knot-sdk';
 
@@ -520,26 +524,26 @@ export function WebhooksTab() {
           <CardContent className="px-6 pt-0 pb-6">
             <div className="mb-4 flex items-center gap-2">
               <Button
-                variant={statusFilter === "" ? "default" : "outline"}
+                variant={statusFilter === '' ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setStatusFilter("")}
+                onClick={() => setStatusFilter('')}
               >
                 All
               </Button>
               <Button
-                variant={statusFilter === "success" ? "default" : "outline"}
+                variant={statusFilter === 'success' ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setStatusFilter("success")}
+                onClick={() => setStatusFilter('success')}
               >
                 Success
               </Button>
               <Button
-                variant={statusFilter === "failed" ? "default" : "outline"}
+                variant={statusFilter === 'failed' ? 'default' : 'outline'}
                 size="sm"
                 className="h-7 text-xs"
-                onClick={() => setStatusFilter("failed")}
+                onClick={() => setStatusFilter('failed')}
               >
                 Failed
               </Button>
@@ -557,9 +561,9 @@ export function WebhooksTab() {
                     className="border-border/30 bg-muted/10 flex items-center justify-between rounded-lg border p-3"
                   >
                     <div className="flex items-center gap-3">
-                      {delivery.status === "success" ? (
+                      {delivery.status === 'success' ? (
                         <CheckCircle2 className="size-4 text-emerald-500" />
-                      ) : delivery.status === "failed" ? (
+                      ) : delivery.status === 'failed' ? (
                         <XCircle className="size-4 text-red-500" />
                       ) : (
                         <Clock className="size-4 text-amber-500" />
@@ -580,8 +584,8 @@ export function WebhooksTab() {
                             variant={
                               delivery.statusCode >= 200 &&
                               delivery.statusCode < 300
-                                ? "default"
-                                : "destructive"
+                                ? 'default'
+                                : 'destructive'
                             }
                             className="text-[10px]"
                           >

@@ -1,7 +1,7 @@
-import { Command, ArrowUpRight } from "lucide-react";
-import Link from "next/link";
-import { auth } from "@/auth";
-import { MarketingHeader } from "@/components/marketing-header";
+import { Command, ArrowUpRight } from 'lucide-react';
+import Link from 'next/link';
+import { auth } from '@/auth';
+import { MarketingHeader } from '@/components/marketing-header';
 
 export default async function MarketingLayout({
   children,
@@ -73,7 +73,8 @@ export default async function MarketingLayout({
               </h4>
               <div className="flex flex-col gap-3">
                 <Link
-                  href="/docs"
+                  href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                  target="_blank"
                   className="text-sm text-zinc-600 transition-colors hover:text-white"
                 >
                   Documentation
