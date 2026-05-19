@@ -80,10 +80,10 @@ pnpm install
 ### 2. Configure
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 ```
 
-Edit `.env.local` with your keys:
+Edit `.env` with your keys:
 
 | Variable             | Description                   |
 | -------------------- | ----------------------------- |

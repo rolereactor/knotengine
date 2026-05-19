@@ -21,7 +21,7 @@ cd knotengine
 pnpm install
 
 # 3. Configure environment
-cp .env.example .env.local
+cp .env.example .env
 
 # 4. Start Docker + all apps
 pnpm docker:up && pnpm dev

@@ -39,14 +39,14 @@ import packageJson from "../package.json" with { type: "json" };
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load .env.local from monorepo root (like Next.js)
+// Load .env from monorepo root (standard convention)
 const possibleEnvPaths = [
-  path.resolve(__dirname, "../../.env.local"), // Monorepo root from built dist/
-  path.resolve(process.cwd(), ".env.local"), // Current working directory
-  path.resolve(process.cwd(), "../../.env.local"), // Two levels up from CWD
-  // Fallback to .env.development (standard dev)
-  path.resolve(__dirname, "../../.env.development"),
-  path.resolve(process.cwd(), ".env.development"),
+  path.resolve(__dirname, "../../.env"), // Monorepo root from built dist/
+  path.resolve(process.cwd(), ".env"), // Current working directory
+  path.resolve(process.cwd(), "../../.env"), // Two levels up from CWD
+  // Fallback to .env.local (legacy)
+  path.resolve(__dirname, "../../.env.local"),
+  path.resolve(process.cwd(), ".env.local"),
 ];
 
 let envLoaded = false;
