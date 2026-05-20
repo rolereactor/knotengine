@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "skills": {
+    "caveman": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/caveman/SKILL.md",
+      "computedHash": "31682f1717adaae451d54bb3421832dbd52853c47bba1404d9b278dbb3eb5aa2"
+    },
+    "diagnose": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/diagnose/SKILL.md",
+      "computedHash": "8f4faf24e02fed79c04bae631d1ae6b12bc9c1021ca4c50c8facb71c53f12238"
+    },
+    "git-workflow": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/git-workflow/SKILL.md",
+      "computedHash": "7e551da4cfe935c97ae2e1965efd6abbe1d3fd26785bf66fc33042b7d826d704"
+    },
+    "grill-me": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/grill-me/SKILL.md",
+      "computedHash": "9ae20b1553890799adcf2605697c0d0151b9809d19b12ee2740b7fdb74560779"
+    },
+    "handoff": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/handoff/SKILL.md",
+      "computedHash": "f85624775f5ea5025b579b05ae47bef747bf45681e4bb3a72356b4512e338acd"
+    },
+    "karpathy-guidelines": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/karpathy-guidelines/SKILL.md",
+      "computedHash": "e7a525aa64e8fc65cd78df08eaddcd2e1320330b8c820a75406967d1c09a8df6"
+    },
+    "nodejs": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/nodejs/SKILL.md",
+      "computedHash": "3256efc1ca2066b2d0c644676704bc9468e452e809998596be41e928d8311931"
+    },
+    "setup-pre-commit": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/setup-pre-commit/SKILL.md",
+      "computedHash": "5367da98bd4c09e381e5ec217f92e740250e93e727a3b4f97aa59c1f884a56be"
+    },
+    "tdd": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/tdd/SKILL.md",
+      "computedHash": "f46499b6828ca93ca62c89946a4d3d138940f10e7ec45210d7e809b88cf9618d"
+    },
+    "typescript": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/typescript/SKILL.md",
+      "computedHash": "6bf2da3c088fa9671a00578b641b591f02efa45b90e414dd71e96fc24af21bf3"
+    },
+    "zoom-out": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/zoom-out/SKILL.md",
+      "computedHash": "167abbbe945960c16b040975a2ad35208dc2aec4fcc2916476388f065c94f7dd"
+    }
+  }
+}

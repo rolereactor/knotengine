@@ -54,31 +54,38 @@ BREAKING CHANGE: `extends` key behavior changed
 ### 1. Analyze Diff
 
 ```bash
+# Check status and scope of changes
+git status --porcelain
+
 # If files are staged, use staged diff
 git diff --staged
 
 # If nothing staged, use working tree diff
-git diff
-
-# Also check status
-git status --porcelain
+git diff --stat
 ```
 
-### 2. Stage Files (if needed)
+**Multi-feature detection:** If `git status --porcelain` shows changes across 3+ different areas (e.g., `src/`, `tests/`, `docs/`), **STOP and ask the user**:
 
-If nothing is staged or you want to group changes differently:
+- "You have changes across multiple areas. Commit all together, or split into separate commits?"
+- Provide options: "All together", "Split by feature", "Interactive staging"
+
+**Never auto-commit everything as one if changes span multiple unrelated features/modules.**
+
+### 2. Stage Files
+
+**If user wants to split:**
 
 ```bash
-# Stage specific files
-git add path/to/file1 path/to/file2
+# Stage specific files/directories
+git add src/auth/
+git add src/ui/
+git add tests/
 
-# Stage by pattern
-git add *.test.*
-git add src/components/*
-
-# Interactive staging
+# Or interactive staging for fine-grained control
 git add -p
 ```
+
+**If user wants all together:** Proceed with all staged files.
 
 **Never commit secrets** (.env, credentials.json, private keys).
 
