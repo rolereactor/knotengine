@@ -13,6 +13,12 @@
       "skillPath": "skills/diagnose/SKILL.md",
       "computedHash": "8f4faf24e02fed79c04bae631d1ae6b12bc9c1021ca4c50c8facb71c53f12238"
     },
+    "git-commit": {
+      "source": "local",
+      "sourceType": "local",
+      "skillPath": ".agents/skills/git-commit/SKILL.md",
+      "computedHash": "7b04557086e1383fb880d5716d946cd451b98ba121a74fbfdca9376550cfb6e5"
+    },
     "git-workflow": {
       "source": "tyecode/skills",
       "sourceType": "github",
