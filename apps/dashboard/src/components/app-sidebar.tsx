@@ -21,10 +21,10 @@ import {
   SettingsIcon,
   MessageCircleIcon,
   ActivityIcon,
-  BlocksIcon,
   UsersIcon,
-  ZapIcon,
+  UserRoundCheckIcon,
   HandCoinsIcon,
+  ChartBarIncreasingIcon,
 } from "lucide-animated";
 
 import {
@@ -48,14 +48,14 @@ import packageJson from "../../package.json";
 
 const animatedIconsMap: Record<string, React.ElementType> = {
   Dashboard: HomeIcon,
+  Analytics: ChartBarIncreasingIcon,
   Payments: CircleDollarSignIcon,
   "Activity Log": ActivityIcon,
   Balances: DollarSignIcon,
   Billing: HandCoinsIcon,
-  Staking: ZapIcon,
-  Ecosystem: BlocksIcon,
   "Affiliate Program": UsersIcon,
   Developers: TerminalIcon,
+  Team: UserRoundCheckIcon,
   Settings: SettingsIcon,
   "Help & Support": MessageCircleIcon,
 };
@@ -91,6 +91,7 @@ const navGroups = [
   {
     label: "Management",
     items: [
+      { icon: Users, label: "Team", href: "/dashboard/team" },
       { icon: Settings, label: "Settings", href: "/dashboard/settings" },
       { icon: LifeBuoy, label: "Help & Support", href: "/dashboard/support" },
     ],

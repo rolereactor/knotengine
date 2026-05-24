@@ -46,7 +46,7 @@ export function useWebhookDeliveries() {
       if (invoiceFilter) params.set("invoiceId", invoiceFilter);
 
       const response = await fetch(
-        `/api/proxy/v1/merchants/me/webhooks/deliveries?${params}`,
+        `/api/v1/merchants/me/webhooks/deliveries?${params}`,
       );
 
       if (response.ok) {
@@ -63,7 +63,7 @@ export function useWebhookDeliveries() {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await fetch("/api/proxy/v1/merchants/me/webhooks/stats");
+      const response = await fetch("/api/v1/merchants/me/webhooks/stats");
 
       if (response.ok) {
         const data = await response.json();
