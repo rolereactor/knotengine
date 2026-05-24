@@ -92,8 +92,11 @@ export default function MarketingPage() {
               className="h-11 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200 hover:shadow-[0_0_40px_rgba(255,255,255,0.15)]"
               asChild
             >
-              <Link href="/pricing">
-                Get Started Free
+              <Link
+                href="/pricing"
+                className="flex items-center tracking-widest uppercase"
+              >
+                Launch Cloud
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -104,10 +107,11 @@ export default function MarketingPage() {
               asChild
             >
               <Link
-                href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
+                href="https://github.com/qodinger/knotengine"
                 target="_blank"
+                className="tracking-widest uppercase"
               >
-                Read the docs
+                Download Local
               </Link>
             </Button>
           </div>
@@ -147,18 +151,20 @@ export default function MarketingPage() {
 
           <div className="grid gap-6 md:grid-cols-2">
             {/* Self-Host */}
-            <div className="group rounded-2xl border border-white/5 bg-white/[0.02] p-10 transition-all hover:border-white/10 hover:bg-white/[0.04]">
+            <div className="group rounded-2xl border border-white/5 bg-white/2 p-10 transition-all hover:border-white/10 hover:bg-white/4">
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5">
                 <Server className="h-6 w-6 text-zinc-400 transition-colors group-hover:text-white" />
               </div>
               <div className="mb-2 flex items-center gap-2">
-                <h3 className="text-xl font-semibold text-white">Self-Host</h3>
+                <h3 className="text-xl font-semibold text-white">
+                  KnotEngine Local
+                </h3>
                 <span className="rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-500">
                   Free
                 </span>
               </div>
               <p className="mb-6 text-sm leading-relaxed text-zinc-500">
-                Run KnotEngine on your own VPS. Full control, full
+                Run KnotEngine on your own hardware. Full control, full
                 responsibility. No platform fees, no limits.
               </p>
               <ul className="mb-8 space-y-2 text-sm text-zinc-400">
@@ -186,14 +192,14 @@ export default function MarketingPage() {
                   href="https://github.com/qodinger/knotengine?tab=readme-ov-file#-self-hosting"
                   target="_blank"
                 >
-                  Deploy yourself
+                  Download Local
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
             </div>
 
             {/* Cloud */}
-            <div className="group rounded-2xl border border-white/10 bg-white/[0.04] p-10 transition-all hover:border-white/20">
+            <div className="group rounded-2xl border border-white/10 bg-white/4 p-10 transition-all hover:border-white/20">
               <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl border border-white/10 bg-white/5">
                 <Cloud className="h-6 w-6 text-zinc-400 transition-colors group-hover:text-white" />
               </div>
@@ -253,7 +259,7 @@ export default function MarketingPage() {
             {features.map((feature, i) => (
               <div
                 key={feature.title}
-                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/[0.02] p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/[0.04] ${feature.className || ""}`}
+                className={`animate-in fade-in slide-in-from-bottom-4 group rounded-2xl border border-white/5 bg-white/2 p-8 transition-all duration-700 hover:border-white/10 hover:bg-white/4 ${feature.className || ""}`}
                 style={{ animationDelay: `${i * 100}ms` }}
               >
                 {feature.icon && (
@@ -350,8 +356,11 @@ export default function MarketingPage() {
               className="h-11 rounded-md bg-white px-8 font-bold text-black shadow-[0_0_30px_rgba(255,255,255,0.1)] transition-all hover:bg-zinc-200"
               asChild
             >
-              <Link href="/pricing">
-                Get Started Free
+              <Link
+                href="/pricing"
+                className="flex items-center tracking-widest uppercase"
+              >
+                Launch Cloud
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
@@ -364,8 +373,9 @@ export default function MarketingPage() {
               <Link
                 href="https://github.com/qodinger/knotengine"
                 target="_blank"
+                className="tracking-widest uppercase"
               >
-                View on GitHub
+                Download Local
               </Link>
             </Button>
           </div>

@@ -53,10 +53,10 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
                 <DropdownMenuItem asChild className="cursor-pointer p-3">
                   <Link href="/" className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-white">
-                      KnotEngine Self-Host
+                      KnotEngine Local
                     </span>
                     <span className="text-xs text-zinc-500">
-                      Open-source, run on your own infrastructure
+                      Open-source, run on your own hardware
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -66,7 +66,28 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
                       KnotEngine Cloud
                     </span>
                     <span className="text-xs text-zinc-500">
-                      Managed infrastructure, coming soon
+                      The full power of KnotEngine from anywhere
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="mx-2 bg-white/5" />
+                <DropdownMenuItem asChild className="cursor-pointer p-3">
+                  <Link href="/docs" className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-white">
+                      KnotEngine API
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      Turn payments into production endpoints
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer p-3">
+                  <Link href="/pricing" className="flex flex-col gap-0.5">
+                    <span className="text-sm font-medium text-white">
+                      KnotEngine Enterprise
+                    </span>
+                    <span className="text-xs text-zinc-500">
+                      Enterprise-grade infrastructure for your organization
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -217,17 +238,22 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-9 text-sm font-medium text-zinc-400 hover:text-white"
+                className="h-9 text-xs font-bold tracking-widest text-zinc-400 transition-colors hover:text-white"
                 asChild
               >
-                <Link href="/login">Sign In</Link>
+                <Link
+                  href="https://github.com/qodinger/knotengine"
+                  target="_blank"
+                >
+                  DOWNLOAD LOCAL
+                </Link>
               </Button>
               <Button
                 size="sm"
-                className="h-9 rounded-full bg-white px-4 text-sm font-bold text-black transition-all hover:bg-zinc-200"
+                className="h-9 rounded-full bg-white px-5 text-xs font-bold tracking-widest text-black transition-all hover:bg-zinc-200"
                 asChild
               >
-                <Link href="/dashboard">Get Started</Link>
+                <Link href="/dashboard">LAUNCH CLOUD</Link>
               </Button>
             </div>
           )}

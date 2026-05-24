@@ -189,7 +189,7 @@ export function SiteHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="bg-background/80 border-border/40 w-95 overflow-hidden rounded-2xl border p-0 shadow-2xl backdrop-blur-xl"
+              className="bg-background/80 border-border/40 w-96 overflow-hidden rounded-2xl border p-0 shadow-2xl backdrop-blur-xl"
             >
               <div className="bg-muted/20 flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-2">
@@ -218,7 +218,7 @@ export function SiteHeader() {
                 )}
               </div>
               <DropdownMenuSeparator className="m-0" />
-              <ScrollArea className="h-105">
+              <ScrollArea className="h-96">
                 <div className="border-border/20 flex flex-col border-t">
                   {notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center space-y-3 p-12 text-center">
@@ -309,11 +309,11 @@ export function SiteHeader() {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="mt-2 w-56" align="end" forceMount>
               <DropdownMenuLabel className="p-4 font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm leading-none font-bold">
+                <div className="flex flex-col space-y-1 overflow-hidden">
+                  <p className="truncate text-sm leading-none font-bold">
                     {user?.name || "Merchant Owner"}
                   </p>
-                  <p className="text-muted-foreground text-xs leading-none">
+                  <p className="text-muted-foreground truncate text-xs leading-none">
                     {user?.email || "No email provided"}
                   </p>
                 </div>
