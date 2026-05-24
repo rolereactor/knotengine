@@ -1,6 +1,6 @@
 ---
 name: caveman
-description: Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler while keeping full technical accuracy. Use when user says "caveman mode", "be brief", or invokes /caveman.
+description: Activates an ultra-compressed communication mode that cuts token usage ~75% by dropping filler while keeping full technical accuracy. Use when user says "caveman mode", "be brief", or invokes /caveman.
 ---
 
 # Skill: caveman

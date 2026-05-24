@@ -1,6 +1,6 @@
 ---
 name: diagnose
-description: Disciplined diagnosis loop for hard bugs and performance regressions. Use when user says "diagnose this" / "debug this", reports a bug, or describes a performance regression.
+description: Runs a disciplined diagnosis loop for hard bugs and performance regressions. Use when user says "diagnose this" / "debug this", reports a bug, or describes a performance regression.
 ---
 
 # Skill: diagnose

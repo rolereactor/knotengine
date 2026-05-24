@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: Interview the user about a plan until shared understanding. Use when user mentions "grill me".
+description: Interviews the user about a plan until requirements are fully resolved and shared understanding is reached. Use when user mentions "grill me", requirements are vague, or before starting something significant.
 ---
 
 # Skill: grill-me
@@ -9,23 +9,38 @@ description: Interview the user about a plan until shared understanding. Use whe
 
 Use this skill when:
 
-- User wants to stress-test a plan
-- User says "grill me"
-- Clarifying requirements before implementing
+- User says "grill me" before starting work
+- Requirements are vague and need sharpening
+- You're about to build something significant and want to reduce risk of building the wrong thing
 
-## How It Works
+## The Process
 
-Ask questions one at a time to walk down each branch of the design tree.
+Ask one question at a time. Do not ask multiple questions in one message.
 
-For each question, provide your recommended answer.
+For each question:
 
-If a question can be answered by exploring the codebase, explore it first.
+1. State your recommended answer with a short reason
+2. Ask the user to confirm, correct, or choose differently
 
-## Example Questions
+Before asking a question that can be answered by reading the codebase, read the codebase first. Don't ask what you can discover yourself.
 
-- "What's the expected scale?"
-- "Who are the end users?"
-- "What's the error handling strategy?"
-- "How will this integrate with existing systems?"
+## What to Cover
 
-Keep asking until you have a complete picture.
+Walk the decision tree until every branch is resolved:
+
+- **Goal** — What does success look like? How will you know it's done?
+- **Scope** — What's in? What's explicitly out?
+- **Users** — Who uses this? What do they need?
+- **Data** — What data is created, read, updated, deleted?
+- **Edge cases** — What happens when inputs are invalid, missing, or extreme?
+- **Errors** — How should failures be handled and surfaced?
+- **Integration** — What existing systems does this touch?
+- **Constraints** — Any deadline, performance, or compatibility requirements?
+
+Stop when you can write a one-paragraph spec that the user confirms is correct.
+
+## When to Stop
+
+Stop asking when you have enough to write a spec. Over-grilling is as harmful as under-grilling — at some point you're just delaying work.
+
+If the user says "just start" before you're done, note the open questions explicitly and proceed with your best assumptions stated.

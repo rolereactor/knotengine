@@ -1,6 +1,6 @@
 ---
 name: zoom-out
-description: Tell the agent to zoom out and give broader context or a higher-level perspective. Use when you're unfamiliar with a section of code or need to understand how it fits into the bigger picture.
+description: Instructs the agent to map the call chain and boundaries before making changes, providing broader context or a higher-level perspective. Use when unfamiliar with a section of code or needing to understand how it fits into the bigger picture.
 ---
 
 # Skill: zoom-out
@@ -9,29 +9,34 @@ description: Tell the agent to zoom out and give broader context or a higher-lev
 
 Use this skill when:
 
-- You're unfamiliar with a section of code
-- Need to understand how code fits into the bigger picture
-- Asking "how does this work?"
+- You're about to edit code you haven't read the full context of
+- Something is behaving unexpectedly and you don't know why
+- You've been deep in a file and lost track of the bigger picture
 
-## What It Does
+## The Process
 
-The AI should say: "I don't know this area well. Let me go up a layer of abstraction."
+Do this before making changes, not after:
 
-Then provide:
+1. **Find the entry point** — where does execution start for this feature? Trace from the route, CLI command, or event trigger.
+2. **Map the call chain** — who calls what. Write it out as a list: `A → B → C → D`.
+3. **Identify the boundaries** — where does this code touch external systems? (DB, API, filesystem, queue)
+4. **Read the types** — what data flows through? Types tell you intent faster than implementation.
+5. **Check the tests** — existing tests describe expected behavior. Read them before reading implementation.
 
-- A map of all relevant modules and callers
-- Use the project's domain vocabulary
-- Explain how the code fits into the larger system
+## What to Produce
 
-## When to Invoke
+Before diving in, write a short summary:
 
-- Exploring unfamiliar code paths
-- Before making changes to understand impact
-- When code seems complex and you need context
-- Onboarding to a new part of the codebase
+- What this code does in one sentence
+- The call chain from entry to the code in question
+- What you expected vs. what you found (if something surprised you)
 
-## Tips
+This takes 2 minutes and prevents 30-minute wrong turns.
 
-- Use this early, not after you've already gone down the wrong path
-- Ask for the "10,000 foot view" before diving into details
-- Request a diagram or flowchart if helpful
+## When You're Truly Lost
+
+If you can't map the flow after reading the code, say so explicitly:
+
+> "I can see what this code does line by line, but I don't understand why it exists or what calls it. I need more context before making changes."
+
+Then ask the user to explain it or point to the entry point. Never make changes to code you don't understand.
