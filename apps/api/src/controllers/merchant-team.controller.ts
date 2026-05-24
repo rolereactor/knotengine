@@ -6,6 +6,7 @@ import { AuditLogger } from "../core/audit-logger.js";
 import { escapeRegExp } from "../middleware/auth.middleware.js";
 import { getPlanLimits, checkPlanLimit } from "@qodinger/knot-types";
 import { EmailService } from "../infra/email-service.js";
+import { safeCompare } from "../utils/crypto.js";
 
 type RoleType = "owner" | "admin" | "developer" | "viewer" | "billing";
 
@@ -23,7 +24,10 @@ async function resolveAuth(
   const oauthId = request.headers["x-oauth-id"] as string;
   const internalSecret = request.headers["x-internal-secret"] as string;
 
-  if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+  if (
+    !oauthId ||
+    !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+  ) {
     reply.code(401).send({ error: "Unauthorized" });
     return null;
   }

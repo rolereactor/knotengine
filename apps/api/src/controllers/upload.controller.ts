@@ -1,12 +1,13 @@
 import { v2 as cloudinary } from "cloudinary";
 import { FastifyReply, FastifyRequest } from "fastify";
+import { safeCompare } from "../utils/crypto.js";
 
 export const UploadController = {
   oauthHook: async (request: FastifyRequest, reply: FastifyReply) => {
     const oauthId = request.headers["x-oauth-id"] as string;
     const secret = request.headers["x-internal-secret"] as string;
 
-    if (!oauthId || secret !== process.env.INTERNAL_SECRET) {
+    if (!oauthId || !safeCompare(secret, process.env.INTERNAL_SECRET || "")) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
   },

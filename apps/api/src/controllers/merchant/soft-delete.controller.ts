@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { Merchant, MerchantMember, User } from "@qodinger/knot-database";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { escapeRegExp } from "../../middleware/auth.middleware.js";
+import { safeCompare } from "../../utils/crypto.js";
 
 export const MerchantSoftDeleteController = {
   softDelete: async (
@@ -113,7 +114,10 @@ async function resolveAuth(
   const oauthId = request.headers["x-oauth-id"] as string;
   const internalSecret = request.headers["x-internal-secret"] as string;
 
-  if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+  if (
+    !oauthId ||
+    !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+  ) {
     reply.code(401).send({ error: "Unauthorized" });
     return null;
   }

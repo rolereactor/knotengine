@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { Merchant, ApiKey } from "@qodinger/knot-database";
 import * as crypto from "crypto";
+import { safeCompare } from "../utils/crypto.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -43,7 +44,7 @@ export const requireAuth = async (
   const merchantId = request.headers["x-merchant-id"] as string;
   const secret = request.headers["x-internal-secret"] as string;
 
-  if (oauthId && secret === process.env.INTERNAL_SECRET) {
+  if (oauthId && safeCompare(secret, process.env.INTERNAL_SECRET || "")) {
     const query: Record<string, unknown> = {
       oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
       isActive: true,

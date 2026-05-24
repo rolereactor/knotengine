@@ -243,7 +243,7 @@ export const InvoicesController = {
           reply,
           400,
           "address_config_missing",
-          `Invalid xPub or address configuration: ${message}`,
+          "Invalid or missing wallet configuration. Please check your xPub settings.",
         );
       }
 
@@ -368,12 +368,13 @@ export const InvoicesController = {
       return reply.code(201).send(responseBody);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      console.error(`Invoice creation error: ${message}`);
       stopTimer();
       return apiError(
         reply,
         500,
         "internal_error",
-        `Failed to create invoice: ${message}`,
+        "An unexpected error occurred while creating the invoice. Please try again.",
       );
     }
   },

@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify";
 import { Merchant, User } from "@qodinger/knot-database";
 import { AuditLogger } from "../../core/audit-logger.js";
+import { safeCompare } from "../../utils/crypto.js";
 
 type SuspensionReason =
   | "payment_failed"
@@ -20,7 +21,10 @@ export const MerchantSuspensionController = {
     const oauthId = request.headers["x-oauth-id"] as string;
     const internalSecret = request.headers["x-internal-secret"] as string;
 
-    if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+    if (
+      !oauthId ||
+      !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+    ) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
 
@@ -80,7 +84,10 @@ export const MerchantSuspensionController = {
     const oauthId = request.headers["x-oauth-id"] as string;
     const internalSecret = request.headers["x-internal-secret"] as string;
 
-    if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+    if (
+      !oauthId ||
+      !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+    ) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
 
@@ -132,7 +139,10 @@ export const MerchantSuspensionController = {
     const oauthId = request.headers["x-oauth-id"] as string;
     const internalSecret = request.headers["x-internal-secret"] as string;
 
-    if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+    if (
+      !oauthId ||
+      !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+    ) {
       return reply.code(401).send({ error: "Unauthorized" });
     }
 

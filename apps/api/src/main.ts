@@ -75,6 +75,7 @@ initSentry(packageJson.version);
 
 const server = Fastify({
   logger: true,
+  trustProxy: true,
 });
 
 // Zod validation integration
@@ -304,9 +305,10 @@ server.get<{ Params: { currency: string } }>(
       };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
+      server.log.warn(`Price fetch failed for ${currency}: ${message}`);
       return reply.code(400).send({
         error: "Price Fetch Failed",
-        details: message,
+        message: "Unable to retrieve price for the requested asset.",
       });
     }
   },

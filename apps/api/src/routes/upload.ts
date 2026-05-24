@@ -16,7 +16,7 @@ export async function uploadRoutes(app: FastifyInstance) {
       preHandler: UploadController.oauthHook,
       schema: {
         body: z.object({
-          image: z.string().min(1), // base64 data URI e.g. "data:image/png;base64,..."
+          image: z.string().min(1).max(5_000_000), // base64 data URI e.g. "data:image/png;base64,..." (~3.75 MB decoded)
           merchantId: z.string().optional(), // used as public_id for easy management
         }),
       },

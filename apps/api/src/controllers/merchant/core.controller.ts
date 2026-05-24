@@ -13,6 +13,7 @@ import { ethers } from "ethers";
 import { FastifyRequest } from "fastify";
 import * as ecc from "tiny-secp256k1";
 import { AuditLogger } from "../../core/audit-logger.js";
+import { safeCompare } from "../../utils/crypto.js";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -72,7 +73,7 @@ export const MerchantCoreController = {
     // Security: Creating a merchant for an OAuth user requires internal privilege
     if (oauthId) {
       const secret = request.headers["x-internal-secret"];
-      if (secret !== process.env.INTERNAL_SECRET) {
+      if (!safeCompare(secret as string, process.env.INTERNAL_SECRET || "")) {
         return reply
           .code(403)
           .send({ error: "Forbidden: Internal Secret Required" });
@@ -240,7 +241,7 @@ export const MerchantCoreController = {
   ) => {
     // Protect with internal secret
     const secret = request.headers["x-internal-secret"];
-    if (secret !== process.env.INTERNAL_SECRET) {
+    if (!safeCompare(secret as string, process.env.INTERNAL_SECRET || "")) {
       return reply.code(403).send({ error: "Forbidden" });
     }
 

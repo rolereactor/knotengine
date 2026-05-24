@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { MerchantMember } from "@qodinger/knot-database";
 import { escapeRegExp } from "./auth.middleware.js";
+import { safeCompare } from "../utils/crypto.js";
 
 export type AuthType = "api_key" | "oauth";
 
@@ -42,7 +43,10 @@ export const requireMerchantAccess = async (
   const oauthId = request.headers["x-oauth-id"] as string;
   const internalSecret = request.headers["x-internal-secret"] as string;
 
-  if (!oauthId || internalSecret !== process.env.INTERNAL_SECRET) {
+  if (
+    !oauthId ||
+    !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
+  ) {
     return reply.code(401).send({ error: "Unauthorized" });
   }
 
