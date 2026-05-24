@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import DecimalLib from "decimal.js";
+import { Decimal as DecimalLib } from "decimal.js";
 
 DecimalLib.set({ precision: 28, rounding: DecimalLib.ROUND_HALF_UP });
 
 type DecimalValue = string | number;
 
 function toDecimal(value: DecimalValue): any {
-  return DecimalLib(value);
+  return new DecimalLib(value);
 }
 
 const DECIMAL_PLACES = 8;

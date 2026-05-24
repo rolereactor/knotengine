@@ -171,7 +171,6 @@ server.register(csrf, {
 });
 
 // 📊 Prometheus Monitoring
-// @ts-expect-error - fastify-metrics types are incompatible with our Fastify version
 server.register(metrics as any, {
   endpoint: "/metrics",
   defaultMetrics: { enabled: true },
