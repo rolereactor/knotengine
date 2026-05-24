@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-const DecimalLib = require("decimal.js") as any;
+import DecimalLib from "decimal.js";
 
 DecimalLib.set({ precision: 28, rounding: DecimalLib.ROUND_HALF_UP });
 
