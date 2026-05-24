@@ -62,6 +62,11 @@ export async function invoiceRoutes(app: FastifyInstance) {
     {
       preHandler: requireAuth,
       schema: {
+        headers: z
+          .object({
+            "idempotency-key": z.string().max(255).optional(),
+          })
+          .passthrough(),
         body: z.object({
           amount_usd: z.number().positive(),
           currency: z.enum(SUPPORTED_CURRENCIES),

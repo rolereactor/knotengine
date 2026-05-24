@@ -13,6 +13,8 @@ import { PriceOracle } from "../infra/price-feed.js";
 import { BlockchainProviderPool } from "../infra/provider-pool.js";
 import * as Metrics from "../infra/metrics.js";
 import { CryptoMath } from "../core/crypto-math.js";
+import { apiError } from "../utils/api-error.js";
+import { RedisClient } from "../infra/redis-client.js";
 
 export const InvoicesController = {
   createInvoice: async (request: any, reply: FastifyReply) => {
@@ -20,7 +22,13 @@ export const InvoicesController = {
 
     try {
       const merchant = request.merchant;
-      if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+      if (!merchant)
+        return apiError(
+          reply,
+          401,
+          "unauthorized",
+          "Authentication required. Provide a valid API key.",
+        );
 
       const {
         amount_usd,
@@ -31,6 +39,22 @@ export const InvoicesController = {
         is_testnet,
       } = request.body;
 
+      // Idempotency: if client sends Idempotency-Key, return cached response on replay
+      const idempotencyKey = request.headers["idempotency-key"] as
+        | string
+        | undefined;
+      if (idempotencyKey) {
+        const cacheKey = `idempotency:invoice:${merchant._id}:${idempotencyKey}`;
+        const cached = await RedisClient.get<object>(cacheKey);
+        if (cached) {
+          stopTimer();
+          return reply
+            .code(200)
+            .header("Idempotent-Replayed", "true")
+            .send(cached);
+        }
+      }
+
       // Determine network context: is it a testnet invoice?
       const isTestnet = is_testnet === true;
       const network = isTestnet ? "testnet" : "mainnet";
@@ -39,11 +63,15 @@ export const InvoicesController = {
         (process.env.BITCOIN_NETWORK as "bitcoin" | "testnet" | "regtest") ||
         "bitcoin";
 
-      // Safety Rail: Only BTC, LTC, ETH and USDT supported on Testnet
+      // Safety Rail: Only supported currencies on Testnet
       if (isTestnet && !SUPPORTED_CURRENCIES.includes(currency as Currency)) {
-        return reply.code(400).send({
-          error: `Testnet is currently only supported for: ${SUPPORTED_CURRENCIES.join(", ")}.`,
-        });
+        return apiError(
+          reply,
+          400,
+          "testnet_currency_unsupported",
+          `Testnet is only supported for: ${SUPPORTED_CURRENCIES.join(", ")}.`,
+          "currency",
+        );
       }
 
       // 🚦 Plan Limit Enforcement: Monthly Invoice Quota
@@ -66,12 +94,12 @@ export const InvoicesController = {
         );
 
         if (!allowed) {
-          return reply.code(429).send({
-            error: `Monthly invoice limit reached (${invoiceCount}/${limit}). Upgrade your plan to increase limits.`,
-            limit,
-            current: invoiceCount,
-            plan: merchant.plan || "starter",
-          });
+          return apiError(
+            reply,
+            429,
+            "invoice_limit_reached",
+            `Monthly invoice limit reached (${invoiceCount}/${limit}). Upgrade your plan to increase limits.`,
+          );
         }
 
         // 🚦 Plan Limit Enforcement: Monthly Volume Cap
@@ -100,12 +128,12 @@ export const InvoicesController = {
         );
 
         if (!volumeAllowed) {
-          return reply.code(429).send({
-            error: `Monthly volume cap reached ($${currentVolume.toFixed(2)}/$${volumeLimit.toFixed(2)}). Upgrade your plan to increase limits.`,
-            limit: volumeLimit,
-            current: currentVolume,
-            plan: merchant.plan || "starter",
-          });
+          return apiError(
+            reply,
+            429,
+            "volume_limit_reached",
+            `Monthly volume cap reached ($${currentVolume.toFixed(2)}/$${volumeLimit.toFixed(2)}). Upgrade your plan to increase limits.`,
+          );
         }
       }
 
@@ -135,9 +163,13 @@ export const InvoicesController = {
         process.env.MIN_INVOICE_AMOUNT || "1.00",
       );
       if (amount_usd < minInvoiceAmount) {
-        return reply.code(400).send({
-          error: `Minimum invoice amount is $${minInvoiceAmount.toFixed(2)}`,
-        });
+        return apiError(
+          reply,
+          400,
+          "below_minimum_amount",
+          `Minimum invoice amount is $${minInvoiceAmount.toFixed(2)}.`,
+          "amount_usd",
+        );
       }
 
       // Credit Balance Gate
@@ -145,14 +177,12 @@ export const InvoicesController = {
         ? await User.findById(merchant.userId)
         : null;
       if (!isTestnet && (!user || user.creditBalance <= 0)) {
-        return reply.code(402).send({
-          error:
-            "Insufficient credit balance. Please top up your account to continue creating invoices.",
-          creditBalance: user?.creditBalance || 0,
-          topUpWallets: {
-            EVM_STABLECOIN: process.env.PLATFORM_FEE_WALLET_EVM || null,
-          },
-        });
+        return apiError(
+          reply,
+          402,
+          "insufficient_credit",
+          "Insufficient credit balance. Please top up your account to continue creating invoices.",
+        );
       }
 
       try {
@@ -160,9 +190,12 @@ export const InvoicesController = {
           const xpub = isTestnet ? merchant.btcXpubTestnet : merchant.btcXpub;
 
           if (!xpub) {
-            return reply.code(400).send({
-              error: `Merchant has no ${currency} ${isTestnet ? "Testnet" : "Mainnet"} xPub configured.`,
-            });
+            return apiError(
+              reply,
+              400,
+              "address_config_missing",
+              `Merchant has no ${currency} ${isTestnet ? "testnet" : "mainnet"} xPub configured.`,
+            );
           }
 
           // Map currency and testnet flag to internal network name
@@ -195,17 +228,23 @@ export const InvoicesController = {
           } else if (ethStaticAddr) {
             payAddress = ethStaticAddr;
           } else {
-            return reply.code(400).send({
-              error: `Merchant has no ETH ${isTestnet ? "Testnet" : "Mainnet"} configuration.`,
-            });
+            return apiError(
+              reply,
+              400,
+              "address_config_missing",
+              `Merchant has no ETH ${isTestnet ? "testnet" : "mainnet"} configuration.`,
+            );
           }
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`Address derivation error: ${message}`);
-        return reply.code(400).send({
-          error: `Invalid xPub or address configuration: ${message}`,
-        });
+        return apiError(
+          reply,
+          400,
+          "address_config_missing",
+          `Invalid xPub or address configuration: ${message}`,
+        );
       }
 
       // Get required confirmations
@@ -307,7 +346,8 @@ export const InvoicesController = {
       Metrics.invoiceCreationLatency.observe({ currency }, duration);
       Metrics.invoiceAmountUsd.observe(amount_usd);
 
-      return reply.code(201).send({
+      const responseBody = {
+        object: "invoice",
         invoice_id: invoice.invoiceId,
         amount_usd: invoice.amountUsd,
         crypto_amount: invoice.cryptoAmount,
@@ -317,13 +357,24 @@ export const InvoicesController = {
         status: invoice.status,
         checkout_url: checkoutUrl,
         is_testnet: isTestnet,
-      });
+      };
+
+      // Cache the response for idempotency replay (24-hour TTL)
+      if (idempotencyKey) {
+        const cacheKey = `idempotency:invoice:${merchant._id}:${idempotencyKey}`;
+        RedisClient.set(cacheKey, responseBody, 86400).catch(() => {});
+      }
+
+      return reply.code(201).send(responseBody);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      stopTimer(); // Stop timer even on error
-      return reply.code(500).send({
-        error: `Failed to create invoice: ${message}`,
-      });
+      stopTimer();
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        `Failed to create invoice: ${message}`,
+      );
     }
   },
 
@@ -352,7 +403,13 @@ export const InvoicesController = {
     );
 
     if (!invoice) {
-      return reply.code(404).send({ error: "Invoice not found" });
+      return apiError(
+        reply,
+        404,
+        "invoice_not_found",
+        `No invoice found with ID '${id}'.`,
+        "id",
+      );
     }
 
     // ON-DEMAND MONITORING: Only subscribe if the invoice is being viewed and is still pending
@@ -397,6 +454,7 @@ export const InvoicesController = {
     }
 
     return {
+      object: "invoice",
       invoice_id: invoice.invoiceId,
       amount_usd: invoice.amountUsd,
       crypto_amount: invoice.cryptoAmount,
@@ -441,7 +499,12 @@ export const InvoicesController = {
     const merchant = request.merchant;
 
     if (!merchant) {
-      return reply.code(401).send({ error: "Authentication required" });
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Authentication required. Provide a valid API key.",
+      );
     }
 
     const {
@@ -475,7 +538,9 @@ export const InvoicesController = {
     ]);
 
     return {
+      object: "list",
       data: invoices.map((inv) => ({
+        object: "invoice",
         invoice_id: inv.invoiceId,
         amount_usd: inv.amountUsd,
         crypto_amount: inv.cryptoAmount,
@@ -507,7 +572,13 @@ export const InvoicesController = {
     reply: FastifyReply,
   ) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Authentication required. Provide a valid API key.",
+      );
     const { id } = request.params;
 
     const invoice = await Invoice.findOne({
@@ -516,13 +587,23 @@ export const InvoicesController = {
     });
 
     if (!invoice) {
-      return reply.code(404).send({ error: "Invoice not found" });
+      return apiError(
+        reply,
+        404,
+        "invoice_not_found",
+        `No invoice found with ID '${id}'.`,
+        "id",
+      );
     }
 
     if (invoice.status !== "pending") {
-      return reply.code(409).send({
-        error: `Cannot cancel invoice with status '${invoice.status}'`,
-      });
+      return apiError(
+        reply,
+        409,
+        "invoice_already_cancelled",
+        `Cannot cancel invoice with status '${invoice.status}'. Only 'pending' invoices can be cancelled.`,
+        "id",
+      );
     }
 
     await Invoice.findByIdAndUpdate(invoice._id, {
@@ -531,7 +612,14 @@ export const InvoicesController = {
 
     console.info(`🚫 Invoice cancelled: ${id}`);
 
-    return { invoice_id: id, status: "expired", cancelled: true };
+    return {
+      object: "invoice",
+      invoice_id: id,
+      status: "expired",
+      cancelled: true,
+      expires_at: invoice.expiresAt.toISOString(),
+      created_at: invoice.createdAt.toISOString(),
+    };
   },
 
   resolveInvoice: async (
@@ -539,7 +627,13 @@ export const InvoicesController = {
     reply: FastifyReply,
   ) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Authentication required. Provide a valid API key.",
+      );
     const { id } = request.params;
 
     const invoice = await Invoice.findOne({
@@ -548,13 +642,23 @@ export const InvoicesController = {
     });
 
     if (!invoice) {
-      return reply.code(404).send({ error: "Invoice not found" });
+      return apiError(
+        reply,
+        404,
+        "invoice_not_found",
+        `No invoice found with ID '${id}'.`,
+        "id",
+      );
     }
 
     if (["confirmed", "overpaid"].includes(invoice.status)) {
-      return reply.code(409).send({
-        error: `Invoice is already in a completed state (${invoice.status}).`,
-      });
+      return apiError(
+        reply,
+        409,
+        "invoice_already_completed",
+        `Invoice is already in a completed state (${invoice.status}) and cannot be resolved again.`,
+        "id",
+      );
     }
 
     // Manual Resolution Logic
@@ -613,6 +717,13 @@ export const InvoicesController = {
 
     console.info(`✅ Invoice manually resolved: ${id}`);
 
-    return { invoice_id: id, status: "confirmed", resolved: true };
+    return {
+      object: "invoice",
+      invoice_id: id,
+      status: "confirmed",
+      resolved: true,
+      paid_at: new Date().toISOString(),
+      created_at: invoice.createdAt.toISOString(),
+    };
   },
 };
