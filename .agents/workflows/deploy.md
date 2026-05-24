@@ -48,10 +48,11 @@ pnpm build --filter api
 ### Step 3: Configure Env
 
 ```bash
-nano .env.production
+cp .env.production.example .env
+nano .env
 ```
 
-_Paste your production variables. Set `PUBLIC_URL` to your future Ngrok or Domain URL._
+_Fill in your production variables. Set `PUBLIC_URL` to your future Ngrok or Domain URL._
 
 ---
 

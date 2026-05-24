@@ -119,7 +119,7 @@ Use the provided `docker-compose.yml` in the repository root:
 ```bash
 git clone https://github.com/qodinger/knotengine.git
 cd knotengine
-cp .env.production .env
+cp .env.production.example .env
 # Edit .env with your Tatum/Alchemy API keys
 docker compose up -d --build
 ```

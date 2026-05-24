@@ -79,6 +79,12 @@
       "skillPath": "skills/engineering/resilience/SKILL.md",
       "computedHash": "dc258f0988adb1e81c0cb4fc0a1ee925639edbf84b10156ed658d7fb7cc2e7b7"
     },
+    "secure-commit": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/secure-commit/SKILL.md",
+      "computedHash": "95bad514fa718729a42bb9289105d252d47e76d53ed8329c73112cb7630eafe8"
+    },
     "security": {
       "source": "tyecode/skills",
       "sourceType": "github",

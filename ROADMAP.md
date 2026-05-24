@@ -78,7 +78,7 @@
 - ✅ Setup documentation (`docs/GMAIL_SETUP.md`)
 - ✅ Docker self-hosting setup (`docker-compose.yml`, `Dockerfile`s for API/Dashboard/Checkout)
 - ✅ One-line install script (`scripts/install.sh`)
-- ✅ Production environment template (`.env.production`)
+- ✅ Production environment template (`.env.production.example`)
 - ✅ Updated README with self-hosting guide
 - ✅ Marketing site redesign (centered hero, animated terminal demo, unified button styling)
 - ✅ Auth routing improvements (`/login` redirects to `/dashboard`)
@@ -279,7 +279,7 @@ Every feature request is evaluated against:
 - ✅ Auth routing improvements (`/login` → `/dashboard` redirect)
 - ✅ Unified button styling across all marketing pages
 - ✅ Pricing cards with bottom-anchored CTAs
-- ✅ Production environment template (`.env.production`)
+- ✅ Production environment template (`.env.production.example`)
 
 ### v0.4.0 (February 2026)
 

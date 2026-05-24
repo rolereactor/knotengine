@@ -2,7 +2,7 @@
 # KnotEngine — Self-Hosted Deployment
 # ══════════════════════════════════════════════
 # Usage:
-#   1. cp .env.production .env && edit .env
+#   1. cp .env.production.example .env && edit .env
 #   2. docker compose up -d --build
 #
 # For pre-built images (once published):

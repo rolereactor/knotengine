@@ -218,7 +218,7 @@ curl -fsSL https://raw.githubusercontent.com/qodinger/knotengine/main/scripts/in
 ```bash
 git clone https://github.com/qodinger/knotengine.git
 cd knotengine
-cp .env.production .env  # secrets auto-generated
+cp .env.production.example .env  # fill in your secrets
 docker compose up -d --build
 ```
 

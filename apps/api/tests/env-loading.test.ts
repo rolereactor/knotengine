@@ -79,18 +79,18 @@ describe("Environment Loading", () => {
       expect(fs.existsSync(envExamplePath)).toBe(true);
     });
 
-    it(".env.production should exist at monorepo root", () => {
+    it(".env.production.example should exist at monorepo root", () => {
       const monorepoRoot = path.resolve(__dirname, "../../..");
-      const envProdPath = path.resolve(monorepoRoot, ".env.production");
+      const envProdPath = path.resolve(monorepoRoot, ".env.production.example");
       expect(fs.existsSync(envProdPath)).toBe(true);
     });
   });
 
   describe("Environment-specific env files", () => {
-    it("should support env-specific files (.env.development or .env.production)", () => {
+    it("should support env-specific files (.env.development or .env.production.example)", () => {
       const monorepoRoot = path.resolve(__dirname, "../../..");
       const envDevPath = path.resolve(monorepoRoot, ".env.development");
-      const envProdPath = path.resolve(monorepoRoot, ".env.production");
+      const envProdPath = path.resolve(monorepoRoot, ".env.production.example");
       expect(fs.existsSync(envDevPath) || fs.existsSync(envProdPath)).toBe(
         true,
       );
