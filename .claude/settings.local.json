@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npx tsc *)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine log --oneline -5)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine add apps/dashboard/src/app/dashboard/team/ apps/dashboard/src/app/dashboard/analytics/loading.tsx apps/dashboard/src/app/dashboard/analytics/page.tsx apps/dashboard/src/app/dashboard/developers/hooks/use-webhook-deliveries.ts apps/dashboard/src/components/app-sidebar.tsx)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine commit -m ' *)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine add apps/api/src/controllers/auth.controller.ts apps/api/src/routes/auth.ts apps/dashboard/src/auth.ts packages/database/src/models/user.model.ts)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine add apps/dashboard/src/app/dashboard/settings/page.tsx apps/dashboard/src/app/dashboard/settings/team/page.tsx apps/dashboard/src/app/dashboard/layout.tsx)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine add apps/dashboard/src/app/dashboard/affiliates/page.tsx apps/dashboard/src/app/dashboard/balances/hooks/use-balances.ts apps/dashboard/src/app/dashboard/payments/hooks/use-payments.ts apps/dashboard/src/app/dashboard/settings/hooks/use-settings.ts apps/dashboard/src/app/dashboard/support/page.tsx apps/dashboard/src/components/ui/sheet.tsx)",
+      "Bash(git -C /Users/tyecode/dev/github/knotengine add .github/workflows/publish.yml CHANGELOG.md scripts/generate-release-notes.ts skills-lock.json .agents/skills/changelog/ .agents/skills/release/ .claude/)"
+    ]
+  }
+}

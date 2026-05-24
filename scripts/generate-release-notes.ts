@@ -1,4 +1,5 @@
-import { execSync } from "child_process";
+import fs from "fs";
+import path from "path";
 
 const TAG = process.argv[2];
 if (!TAG) {
@@ -6,105 +7,77 @@ if (!TAG) {
   process.exit(1);
 }
 
-function getPreviousTag(tag: string): string {
-  try {
-    const result = execSync(
-      `git tag --sort=-v:refname | grep -E '^v[0-9]+\\.' | awk '/^${tag}$/{found=1; next} found{print; exit}'`,
-      { encoding: "utf-8" },
-    ).trim();
-    return result || "";
-  } catch {
-    return "";
+// Strip the "v" prefix if it exists (e.g., "v0.6.0" -> "0.6.0")
+const versionStr = TAG.startsWith("v") ? TAG.slice(1) : TAG;
+const targetHeadingPrefix = `## [${versionStr}]`;
+const unreleasedPrefix = `## [Unreleased]`;
+
+const changelogPath = path.join(process.cwd(), "CHANGELOG.md");
+let changelogContent = "";
+
+try {
+  changelogContent = fs.readFileSync(changelogPath, "utf-8");
+} catch {
+  console.error("Could not read CHANGELOG.md");
+  process.exit(1);
+}
+
+const lines = changelogContent.split("\n");
+let isExtracting = false;
+const extractedNotes: string[] = [];
+
+for (const line of lines) {
+  // If we find our target version heading, start extracting
+  if (line.startsWith(targetHeadingPrefix)) {
+    isExtracting = true;
+    continue; // Skip the heading itself, GitHub Releases has its own title
+  }
+
+  // If we are currently extracting and hit the NEXT version heading, stop
+  if (
+    isExtracting &&
+    line.startsWith("## [") &&
+    !line.startsWith(targetHeadingPrefix)
+  ) {
+    break;
+  }
+
+  if (isExtracting) {
+    extractedNotes.push(line);
   }
 }
 
-function parseCommits(from: string, to: string): string {
-  const result = execSync(
-    `git log ${from}..${to} --pretty=format:"%H%n%s%n%b%n---END---"`,
-    { encoding: "utf-8" },
-  );
-
-  const commits: { hash: string; subject: string; body: string }[] = [];
-  let currentHash = "";
-  let currentSubject = "";
-  let currentBody = "";
-
-  for (const line of result.split("\n")) {
-    if (line === "---END---") {
-      if (currentHash) {
-        commits.push({
-          hash: currentHash,
-          subject: currentSubject,
-          body: currentBody.trim(),
-        });
-      }
-      currentHash = "";
-      currentSubject = "";
-      currentBody = "";
-    } else if (!currentHash) {
-      currentHash = line;
-    } else if (!currentSubject) {
-      currentSubject = line;
-    } else {
-      currentBody += line + "\n";
+// Fallback: If we didn't find the exact tag, try to grab [Unreleased] as a safety net.
+// (e.g. if a developer forgot to rename the heading before pushing the tag)
+if (extractedNotes.length === 0) {
+  for (const line of lines) {
+    if (line.startsWith(unreleasedPrefix)) {
+      isExtracting = true;
+      continue;
+    }
+    if (
+      isExtracting &&
+      line.startsWith("## [") &&
+      !line.startsWith(unreleasedPrefix)
+    ) {
+      break;
+    }
+    if (isExtracting) {
+      extractedNotes.push(line);
     }
   }
 
-  const sections: Record<string, string[]> = {
-    feat: [],
-    fix: [],
-    docs: [],
-    chore: [],
-    ci: [],
-    build: [],
-    refactor: [],
-    perf: [],
-    test: [],
-    style: [],
-  };
-
-  for (const commit of commits) {
-    const match = commit.subject.match(/^(\w+)(?:\(([^)]+)\))?:\s*(.+)$/);
-    if (match) {
-      const [, type, scope, message] = match;
-      const entry = scope ? `**${scope}:** ${message}` : message;
-      if (sections[type]) {
-        sections[type].push(entry);
-      }
-    }
+  if (extractedNotes.length > 0) {
+    extractedNotes.unshift(
+      "> **Note:** These notes were extracted from the [Unreleased] section of CHANGELOG.md.\n",
+    );
   }
-
-  const typeLabels: Record<string, string> = {
-    feat: "🚀 Features",
-    fix: "🐛 Bug Fixes",
-    docs: "📚 Documentation",
-    chore: "🔧 Maintenance",
-    ci: "🔄 CI/CD",
-    build: "📦 Build",
-    refactor: "♻️ Refactoring",
-    perf: "⚡ Performance",
-    test: "🧪 Tests",
-    style: "💅 Styling",
-  };
-
-  let output = "";
-  for (const [type, label] of Object.entries(typeLabels)) {
-    if (sections[type].length > 0) {
-      output += `## ${label}\n\n`;
-      for (const entry of sections[type]) {
-        output += `- ${entry}\n`;
-      }
-      output += "\n";
-    }
-  }
-
-  return output;
 }
 
-const previousTag = getPreviousTag(TAG);
+const finalOutput = extractedNotes.join("\n").trim();
 
-console.log(`# KnotEngine ${TAG}\n`);
-console.log(parseCommits(previousTag || "", TAG));
-console.log(
-  `**Full Changelog**: https://github.com/qodinger/knotengine/compare/${previousTag || "v0.0.0"}...${TAG}`,
-);
+if (!finalOutput) {
+  console.log(`*No release notes found in CHANGELOG.md for ${TAG}*`);
+} else {
+  console.log(finalOutput);
+}

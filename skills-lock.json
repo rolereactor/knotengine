@@ -7,6 +7,12 @@
       "skillPath": "skills/caveman/SKILL.md",
       "computedHash": "31682f1717adaae451d54bb3421832dbd52853c47bba1404d9b278dbb3eb5aa2"
     },
+    "changelog": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/changelog/SKILL.md",
+      "computedHash": "7d9e672819b2120f0f8271c16b5d7cb553d0c58dbeff606525abf32b4621da43"
+    },
     "diagnose": {
       "source": "tyecode/skills",
       "sourceType": "github",
@@ -48,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "skills/nodejs/SKILL.md",
       "computedHash": "3256efc1ca2066b2d0c644676704bc9468e452e809998596be41e928d8311931"
+    },
+    "release": {
+      "source": "tyecode/skills",
+      "sourceType": "github",
+      "skillPath": "skills/engineering/release/SKILL.md",
+      "computedHash": "d0e0a0300f1b2100d4c890bf77f8144ffbde3000e865e47400ef8e694505650b"
     },
     "setup-pre-commit": {
       "source": "tyecode/skills",

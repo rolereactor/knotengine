@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **[Platform] Self-Hosted Mode** — Introduced a new `SELF_HOSTED` environment flag that unlocks all enterprise features for free when deploying a self-managed instance.
+- **[API] Multiple API Keys & Webhooks** — Merchants can now generate multiple API keys and configure multiple webhook endpoints for different environments.
+- **[Dashboard] Team Management** — Workspace owners can now invite team members to collaborate on their merchant dashboard.
+- **[Security] Account Lifecycle Management** — Added secure endpoints for merchant suspension, soft deletion, and stricter plan limit enforcements.
+- **[Developer] OAuth Configuration** — Added streamlined configurations to easily set up OAuth providers.
+- **[Platform] USDC Support** — Added support for USDC as an accepted currency for platform plans.
+- **[Developer] One-Click Setup** — Added a convenient `pnpm start` command for one-command local development setup.
+
+### Changed
+
+- **[Dashboard] Homepage Redesign** — Completely redesigned the marketing homepage to clarify the dual-model pattern (Self-Host Open Source vs. Managed Cloud).
+- **[Platform] Pricing & Plans** — Upgraded the feature matrix for enterprise differentiation and updated cloud pricing tiers.
+- **[Developer] Environment Variables** — Standardized `.env` loading conventions (e.g., `.env.local`) across all applications for a smoother self-hosting setup.
+- **[Developer] CI/CD & Dependabot** — Upgraded GitHub Actions, enabled Docker build caching, and refined Dependabot rules for faster and more stable open-source contributions.
+- **[SDK] TypeScript & ESM Support** — Standardized ESM imports and exported additional types (`PLAN_COSTS`) for a better developer experience when integrating the KnotEngine SDK.
+- **[Dashboard] UI Polish** — Refined the layout and styling of marketing and site headers for a cleaner look.
+
+### Fixed
+
+- **[API] API Key Revocation** — Fixed a bug where API keys would improperly auto-generate during the revocation process.
+- **[Security] Vulnerability Patch** — Resolved critical security issues and established an official `SECURITY.md` reporting policy.
+- **[Platform] Database Performance** — Improved overall API response times by optimizing heavy merchant database queries and resolving index warnings.
+- **[Docs] Documentation Links** — Fixed broken `/docs` links and updated messaging across the marketing site.
+- **[Security] Auth Secret** — Fixed an issue where `AUTH_SECRET` was not correctly loaded from monorepo root environment files.
+- **[Platform] Billing Engine** — Corrected billing price typos, resolved audit logging issues, and enforced plan limits properly.
+- **[Dashboard] Analytics & Hooks** — Aligned analytics periods correctly with checkout types and resolved performance issues in state management hooks.
+- **[CI/CD] Release Notes** — Fixed release note generation in CI to ensure it fetches all necessary git tags.
+
+### Removed
+
+- **[Dashboard] Legacy Pages** — Removed the deprecated "staking" and "ecosystem" pages to declutter the dashboard interface.
+
 ## [0.5.0] - 2026-05-16
 
 ### Added
