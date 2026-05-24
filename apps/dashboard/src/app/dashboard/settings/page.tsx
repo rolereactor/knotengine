@@ -11,14 +11,12 @@ import { TwoFADisableDialog } from "./components/two-fa-disable-dialog";
 import { DangerZoneCard } from "./components/danger-zone-card";
 import { SuccessToast } from "./components/success-toast";
 import { SubNavLayout } from "@/components/sub-nav-layout";
-import { Store, ShieldCheck, Sliders, Trash2, Users } from "lucide-react";
-import TeamMembersPage from "./team/page";
+import { Store, ShieldCheck, Sliders, Trash2 } from "lucide-react";
 
 const sections = [
   { label: "Merchant Profile", value: "merchant", icon: Store },
   { label: "Security", value: "security", icon: ShieldCheck },
   { label: "Payment Engine", value: "payment", icon: Sliders },
-  { label: "Team", value: "team", icon: Users },
   { label: "Danger Zone", value: "danger", icon: Trash2 },
 ];
 
@@ -100,8 +98,6 @@ export default function SettingsPage() {
             saving={saving}
           />
         )}
-
-        {activeSection === "team" && <TeamMembersPage />}
 
         {activeSection === "danger" && (
           <DangerZoneCard

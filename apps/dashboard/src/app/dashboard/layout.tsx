@@ -3,6 +3,7 @@ import React from "react";
 
 import { auth } from "@/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
   children,
@@ -10,6 +11,9 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
+
+  if (!session) redirect("/login");
+
   const merchants =
     (session?.user as { merchants?: { id: string; name?: string }[] })
       ?.merchants || [];
