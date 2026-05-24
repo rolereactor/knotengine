@@ -9,6 +9,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IUser extends Document {
   oauthId: string;
   email?: string;
+  image?: string;
   /** Email verification status */
   emailVerified: boolean;
   /** Shared prepaid credit balance (USD) across all merchants */
@@ -39,6 +40,7 @@ const UserSchema: Schema = new Schema(
   {
     oauthId: { type: String, unique: true, required: true },
     email: { type: String, sparse: true },
+    image: { type: String },
     emailVerified: { type: Boolean, default: false },
     creditBalance: { type: Number, default: 0 },
     yieldAccruedUsd: { type: Number, default: 0 },

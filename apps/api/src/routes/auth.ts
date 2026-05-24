@@ -164,6 +164,7 @@ export async function authRoutes(app: FastifyInstance) {
             .refine(isValidEmail, { message: "Invalid email format" }),
           provider: z.enum(["google", "github"]),
           providerId: z.string().min(1).max(255),
+          image: z.string().url().max(500).optional(),
         }),
       },
     },

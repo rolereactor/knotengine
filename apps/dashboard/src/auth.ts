@@ -105,6 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                   email: userEmail,
                   provider: account.provider,
                   providerId: user.id as string,
+                  image: user.image ?? undefined,
                 }),
               });
               if (res.ok) {

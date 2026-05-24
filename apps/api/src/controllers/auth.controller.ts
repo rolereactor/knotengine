@@ -248,11 +248,16 @@ export const AuthController = {
 
   linkOAuthProvider: async (
     request: FastifyRequest<{
-      Body: { email: string; provider: string; providerId: string };
+      Body: {
+        email: string;
+        provider: string;
+        providerId: string;
+        image?: string;
+      };
     }>,
     _reply: FastifyReply,
   ) => {
-    const { email, provider, providerId } = request.body;
+    const { email, provider, providerId, image } = request.body;
 
     const emailOauthId = `email:${email}`;
     const providerOauthId = `${provider}:${providerId}`;
@@ -267,6 +272,7 @@ export const AuthController = {
       user = await User.create({
         oauthId: emailOauthId,
         email,
+        image,
         emailVerified: true,
         creditBalance: parseFloat(process.env.WELCOME_CREDIT_AMOUNT || "5.00"),
         welcomeBonusClaimed: true,
@@ -274,14 +280,21 @@ export const AuthController = {
           "REF_" + crypto.randomBytes(4).toString("hex").toUpperCase(),
       });
       request.server.log.info(`👤 New User created via OAuth: ${email}`);
-    } else if (user.oauthId === emailOauthId) {
-      request.server.log.info(
-        `🔗 Linked ${provider} to existing email account: ${email}`,
-      );
     } else {
-      request.server.log.info(
-        `🔗 Using existing ${provider} account for: ${email}`,
-      );
+      // Always update image on login so it stays fresh
+      if (image && image !== user.image) {
+        await User.findByIdAndUpdate(user._id, { $set: { image } });
+        user.image = image;
+      }
+      if (user.oauthId === emailOauthId) {
+        request.server.log.info(
+          `🔗 Linked ${provider} to existing email account: ${email}`,
+        );
+      } else {
+        request.server.log.info(
+          `🔗 Using existing ${provider} account for: ${email}`,
+        );
+      }
     }
 
     return {
