@@ -128,50 +128,68 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="hidden h-8 gap-2 text-zinc-400 hover:text-white lg:flex"
-            asChild
+          <Link
+            href="https://github.com/qodinger/knotengine"
+            target="_blank"
+            className="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 text-sm font-medium text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
           >
-            <Link href="https://github.com/qodinger/knotengine" target="_blank">
-              <Github className="h-4 w-4" />
-              GitHub
-            </Link>
-          </Button>
+            <Github className="h-4 w-4 shrink-0" />
+            <span className="hidden lg:inline">GitHub</span>
+          </Link>
+
+          {/* Separator between GitHub and account */}
+          <div className="hidden h-4 w-px bg-white/10 lg:block" />
 
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 px-2 text-zinc-400 hover:text-white"
+                  className="flex h-9 items-center gap-2 rounded-full border border-white/10 bg-white/5 px-2 pr-3 text-zinc-300 transition-colors hover:border-white/20 hover:bg-white/10 hover:text-white"
                 >
-                  <Avatar className="h-7 w-7 border border-white/10">
+                  <Avatar className="h-6 w-6 shrink-0">
                     <AvatarImage src={user.image || ""} alt={user.name || ""} />
-                    <AvatarFallback className="bg-white/10 text-[10px] text-white">
-                      {user.name?.[0]?.toUpperCase() || "U"}
+                    <AvatarFallback className="bg-white/15 text-[9px] font-semibold text-white">
+                      {user.name
+                        ?.split(" ")
+                        .slice(0, 2)
+                        .map((n) => n[0]?.toUpperCase())
+                        .join("") || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden text-sm font-medium sm:inline">
+                  <span className="hidden max-w-32 truncate text-sm font-medium sm:inline">
                     {user.name || "Account"}
                   </span>
-                  <ChevronDown className="h-3 w-3" />
+                  <ChevronDown className="h-3 w-3 shrink-0 text-zinc-500" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="mt-2 w-56 rounded-xl border-white/10 bg-[#0a0a0a]"
                 align="end"
-                forceMount
               >
                 <DropdownMenuLabel className="p-4 font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm leading-none font-bold text-white">
-                      {user.name || "Merchant Owner"}
-                    </p>
-                    <p className="text-xs leading-none text-zinc-500">
-                      {user.email || ""}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarImage
+                        src={user.image || ""}
+                        alt={user.name || ""}
+                      />
+                      <AvatarFallback className="bg-white/15 text-xs font-semibold text-white">
+                        {user.name
+                          ?.split(" ")
+                          .slice(0, 2)
+                          .map((n) => n[0]?.toUpperCase())
+                          .join("") || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {user.name || "Merchant Owner"}
+                      </p>
+                      <p className="truncate text-xs text-zinc-500">
+                        {user.email || ""}
+                      </p>
+                    </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-white/5" />
@@ -199,14 +217,14 @@ export function MarketingHeader({ user }: MarketingHeaderProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-sm font-medium text-zinc-400 hover:text-white"
+                className="h-9 text-sm font-medium text-zinc-400 hover:text-white"
                 asChild
               >
                 <Link href="/login">Sign In</Link>
               </Button>
               <Button
                 size="sm"
-                className="h-8 rounded-md bg-white px-4 text-sm font-bold text-black transition-all hover:bg-zinc-200"
+                className="h-9 rounded-full bg-white px-4 text-sm font-bold text-black transition-all hover:bg-zinc-200"
                 asChild
               >
                 <Link href="/dashboard">Get Started</Link>
