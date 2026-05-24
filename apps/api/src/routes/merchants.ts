@@ -913,9 +913,11 @@ export async function merchantRoutes(app: FastifyInstance) {
     "/v1/merchants/:merchantId/keys/:keyId/revoke",
     {
       schema: {
-        body: z.object({
-          reason: z.string().max(MAX_TEXT_LENGTH).optional(),
-        }),
+        body: z
+          .object({
+            reason: z.string().max(MAX_TEXT_LENGTH).optional(),
+          })
+          .nullish(),
       },
     },
     ApiKeyController.revokeKey,

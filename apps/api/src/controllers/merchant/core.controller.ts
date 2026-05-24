@@ -158,24 +158,6 @@ export const MerchantCoreController = {
       webhookSecret,
     });
 
-    // Create a default API key for the merchant (OAuth and direct registrations both get one)
-    const defaultApiKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
-    const defaultApiKeyHash = crypto
-      .createHash("sha256")
-      .update(defaultApiKey)
-      .digest("hex");
-    const keyId = `key_${crypto.randomBytes(8).toString("hex")}`;
-
-    await ApiKey.create({
-      merchantId: newMerchant._id,
-      keyId,
-      keyHash: defaultApiKeyHash,
-      label: "Default API Key",
-      scope: "full_access",
-      lastFour: defaultApiKey.slice(-4),
-      createdBy: userId,
-    });
-
     if (userId) {
       await MerchantMember.create({
         merchantId: newMerchant._id,
@@ -208,7 +190,7 @@ export const MerchantCoreController = {
       email: newMerchant.email,
       logoUrl: newMerchant.logoUrl,
       webhookSecret,
-      apiKey: defaultApiKey,
+      apiKey: null,
     });
   },
   listMerchants: async (request: any, reply: FastifyReply) => {
@@ -289,33 +271,6 @@ export const MerchantCoreController = {
         if (updatedMerchant) merchant = updatedMerchant;
         console.info(
           `🆔 Auto-assigned public ID for merchant: ${merchant._id} -> ${mid}`,
-        );
-      }
-
-      // Ensure every merchant has an API key in the ApiKey collection
-      const existingKey = await ApiKey.findOne({
-        merchantId: merchant._id,
-        isActive: true,
-      });
-      if (!existingKey) {
-        const apiKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
-        const apiKeyHash = crypto
-          .createHash("sha256")
-          .update(apiKey)
-          .digest("hex");
-        const keyId = `key_${crypto.randomBytes(8).toString("hex")}`;
-
-        await ApiKey.create({
-          merchantId: merchant._id,
-          keyId,
-          keyHash: apiKeyHash,
-          label: "Auto-generated API Key",
-          scope: "full_access",
-          lastFour: apiKey.slice(-4),
-        });
-
-        console.info(
-          `🔑 Auto-generated API key for OAuth merchant: ${merchant._id}`,
         );
       }
 

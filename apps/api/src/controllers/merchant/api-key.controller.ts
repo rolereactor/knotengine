@@ -121,7 +121,7 @@ export const ApiKeyController = {
     if (!ctx) return;
 
     const { merchant, user } = ctx;
-    const { reason } = (request as any).body;
+    const reason = (request as any).body?.reason;
 
     const apiKey = await ApiKey.findOne({
       _id: request.params.keyId,
