@@ -51,11 +51,23 @@ async function resolveAuth(
     return null;
   }
 
-  const membership = await MerchantMember.findOne({
+  let membership = await MerchantMember.findOne({
     merchantId: merchant._id,
     userId: user._id,
     ...(requireAccepted ? { accepted: true } : {}),
   });
+
+  // Lazy migration: if no membership exists but this user is the merchant owner,
+  // auto-create the owner record (handles merchants created before team system)
+  if (!membership && merchant.userId?.toString() === user._id.toString()) {
+    membership = await MerchantMember.create({
+      merchantId: merchant._id,
+      userId: user._id,
+      role: "owner",
+      accepted: true,
+      acceptedAt: new Date(),
+    });
+  }
 
   if (!membership) {
     reply.code(403).send({ error: "Access denied" });
@@ -80,18 +92,20 @@ export const MerchantTeamController = {
 
     const members = await MerchantMember.find({
       merchantId: ctx.merchant._id,
-    }).populate("userId", "email oauthId");
+    }).populate("userId", "email oauthId image");
 
     return {
       members: members.map((m: any) => ({
         id: m._id.toString(),
         userId: m.userId ? (m.userId as any)._id.toString() : null,
         email: m.userId ? (m.userId as any).email : m.email,
+        image: m.userId ? ((m.userId as any).image ?? null) : null,
         role: m.role,
         accepted: m.accepted,
         invitedAt: m.invitedAt,
         acceptedAt: m.acceptedAt,
         roleHistory: m.roleHistory || [],
+        isSelf: m._id.toString() === ctx.membership._id.toString(),
       })),
     };
   },
