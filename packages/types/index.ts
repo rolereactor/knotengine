@@ -14,7 +14,13 @@ export const SUPPORTED_CURRENCIES = [
 
 export type Currency = (typeof SUPPORTED_CURRENCIES)[number];
 
-export const EVM_CURRENCIES: Currency[] = ["ETH", "USDT_ERC20", "USDT_POLYGON"];
+export const EVM_CURRENCIES: Currency[] = [
+  "ETH",
+  "USDT_ERC20",
+  "USDT_POLYGON",
+  "USDC_ERC20",
+  "USDC_POLYGON",
+];
 
 export const CRYPTO_LOGOS: Record<Currency, string> = {
   BTC: "https://cryptologos.cc/logos/bitcoin-btc-logo.svg?v=032",
@@ -233,6 +239,7 @@ export const DEFAULT_CONFIRMATIONS: Record<string, number> = {
   ETH: 12,
   USDT_ERC20: 12,
   USDT_POLYGON: 30,
+  USDC_ERC20: 12,
   USDC_POLYGON: 30,
 };
 

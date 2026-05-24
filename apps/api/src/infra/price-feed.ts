@@ -161,6 +161,9 @@ export class PriceOracle {
       case "USDT_ERC20":
       case "USDT_POLYGON":
         return "tether";
+      case "USDC_ERC20":
+      case "USDC_POLYGON":
+        return "usd-coin";
       default:
         throw new Error(`Unsupported currency: ${currency}`);
     }
@@ -176,7 +179,10 @@ export class PriceOracle {
         return "ETHUSDT";
       case "USDT_ERC20":
       case "USDT_POLYGON":
-        return "USDCUSDT"; // Use USDC/USDT for Tether relative price or just 1.0
+        return null; // No USDT/USDT pair on Binance; CoinGecko handles stablecoins
+      case "USDC_ERC20":
+      case "USDC_POLYGON":
+        return "USDCUSDT";
       default:
         return null;
     }

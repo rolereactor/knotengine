@@ -12,6 +12,7 @@ import { DEFAULT_CONFIRMATIONS, EVM_CURRENCIES } from "@qodinger/knot-types";
 import { BlockchainProviderPool } from "../infra/provider-pool.js";
 import { NotificationService } from "../infra/notification-service.js";
 import { CryptoMath } from "./crypto-math.js";
+import * as Metrics from "../infra/metrics.js";
 
 /**
  * 🔒 ConfirmationEngine
@@ -102,7 +103,12 @@ export class ConfirmationEngine {
         const isAssetMatch =
           event.asset === invoice.cryptoCurrency ||
           (invoice.cryptoCurrency.startsWith(event.asset) &&
-            ["USDT_ERC20", "USDT_POLYGON"].includes(invoice.cryptoCurrency));
+            [
+              "USDT_ERC20",
+              "USDT_POLYGON",
+              "USDC_ERC20",
+              "USDC_POLYGON",
+            ].includes(invoice.cryptoCurrency));
 
         if (!isAssetMatch) {
           console.warn(
@@ -274,6 +280,15 @@ export class ConfirmationEngine {
                 $inc: { creditBalance: -invoice.feeUsd },
               });
             }
+
+            const confirmationSeconds =
+              (Date.now() - new Date(invoice.createdAt).getTime()) / 1000;
+            Metrics.recordPayment(
+              invoice.cryptoCurrency,
+              "mainnet",
+              invoice.amountUsd,
+              confirmationSeconds,
+            );
 
             NotificationService.notifyPaymentConfirmed(
               invoice.merchantId.toString(),

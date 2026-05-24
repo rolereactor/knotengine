@@ -18,7 +18,14 @@ export class AlchemyProvider implements IBlockchainProvider {
     const webhookId = process.env.ALCHEMY_NOTIFY_WEBHOOK_ID;
 
     // Alchemy only supports EVM monitoring via this method
-    const supportedChains = ["ETH", "USDT_ERC20", "USDT_POLYGON", "MATIC"];
+    const supportedChains = [
+      "ETH",
+      "USDT_ERC20",
+      "USDT_POLYGON",
+      "USDC_ERC20",
+      "USDC_POLYGON",
+      "MATIC",
+    ];
     if (!supportedChains.includes(chain)) {
       return null;
     }

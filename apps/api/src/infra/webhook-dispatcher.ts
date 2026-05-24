@@ -8,6 +8,7 @@ import {
 import { Derivator } from "@qodinger/knot-crypto";
 import * as crypto from "crypto";
 import { NotificationService } from "./notification-service.js";
+import * as Metrics from "./metrics.js";
 import { WebhookQueue } from "./webhook-queue.js";
 
 /**
@@ -160,7 +161,7 @@ export class WebhookDispatcher {
           });
 
           const updateSet: Record<string, unknown> = {
-            webhook_attempts: attempt,
+            webhookAttempts: attempt,
             lastWebhookAttempt: new Date(),
           };
 
@@ -168,9 +169,7 @@ export class WebhookDispatcher {
             updateSet.webhookDelivered = true;
           }
 
-          await Invoice.findByIdAndUpdate(invoice._id, {
-            $set: updateSet,
-          });
+          await Invoice.findByIdAndUpdate(invoice._id, { $set: updateSet });
 
           await WebhookDelivery.create({
             merchantId: invoice.merchantId.toString(),
@@ -184,6 +183,8 @@ export class WebhookDispatcher {
             duration,
           });
 
+          Metrics.recordWebhookDelivery(event, true, duration / 1000);
+
           console.log(
             `✅ Webhook SUCCESS: ${invoiceId} ${event} delivered to ${endpoint.url}`,
           );
@@ -196,7 +197,7 @@ export class WebhookDispatcher {
 
         await Invoice.findByIdAndUpdate(invoice._id, {
           $set: {
-            webhook_attempts: attempts,
+            webhookAttempts: attempts,
             lastWebhookAttempt: new Date(),
           },
         });
@@ -231,6 +232,8 @@ export class WebhookDispatcher {
           errorMessage: message.substring(0, 500),
           duration,
         });
+
+        Metrics.recordWebhookDelivery(event, false, duration / 1000);
 
         console.error(
           `❌ Webhook FAILURE (${attempts}/${this.MAX_ATTEMPTS}) for ${invoiceId} to ${endpoint.url}: ${message}`,
