@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
 import { fetcher, swrKeys } from "@/lib/swr";
+import { toast } from "sonner";
 import { ASSET_CONFIG, NETWORK_CONFIG } from "@qodinger/knot-types";
 import { MerchantProfile, StatsData, Invoice, WalletInfo } from "../types";
 
@@ -147,8 +148,10 @@ export function useBalances() {
       setNewWalletAddress("");
       setNewWalletCoin("");
       setNewWalletNetwork("");
+      toast.success("Wallet added successfully");
     } catch (err) {
       console.error("Failed to add wallet", err);
+      toast.error("Failed to add wallet");
     } finally {
       setIsAddingWallet(false);
     }
@@ -190,8 +193,10 @@ export function useBalances() {
 
       await api.patch("/v1/merchants/me", payload);
       await mutateMerchant();
+      toast.success("Wallet removed");
     } catch (err) {
       console.error("Failed to remove wallet", err);
+      toast.error("Failed to remove wallet");
     } finally {
       setIsRemovingWallet(false);
       setWalletToRemove(null);

@@ -45,8 +45,8 @@ export default function AffiliatesPage() {
   };
 
   const stats = {
-    totalAffiliates: 0,
-    activeMerchants: 0,
+    totalAffiliates: null as number | null, // tracked server-side, not yet exposed via API
+    activeMerchants: null as number | null,
     totalEarned: affiliateEarningsUsd,
     potentialEarnings: affiliateEarningsUsd * 2 || 100.0,
   };
@@ -95,10 +95,12 @@ export default function AffiliatesPage() {
                 Affiliates
               </p>
               <p className="mt-1 text-2xl font-bold text-white">
-                {stats.totalAffiliates}
+                {stats.totalAffiliates ?? "–"}
               </p>
               <p className="text-muted-foreground mt-0.5 text-[10px] font-medium">
-                {stats.activeMerchants} active
+                {stats.activeMerchants != null
+                  ? `${stats.activeMerchants} active`
+                  : "–"}
               </p>
             </div>
           </Card>

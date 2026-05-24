@@ -6,6 +6,7 @@ import useSWR from "swr";
 import { api } from "@/lib/api";
 import { fetcher, swrKeys } from "@/lib/swr";
 import { Invoice, TimelineEvent } from "../types";
+import { toast } from "sonner";
 
 type MerchantPlan = "starter" | "professional" | "enterprise";
 
@@ -80,6 +81,7 @@ export function usePayments() {
       setTimeline(res.data.data);
     } catch (err) {
       console.error("Failed to fetch timeline", err);
+      toast.error("Failed to load invoice timeline");
     } finally {
       setLoadingTimeline(false);
     }
@@ -144,6 +146,7 @@ export function usePayments() {
       await mutateInvoices();
     } catch (err) {
       console.error("Failed to resolve invoice", err);
+      toast.error("Failed to resolve invoice");
     }
   };
 

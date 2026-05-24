@@ -7,6 +7,7 @@ import { fetcher, swrKeys } from "@/lib/swr";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { MerchantSettings, TwoFASetupData } from "../types";
+import { toast } from "sonner";
 
 interface MerchantResponse {
   merchantId?: string;
@@ -141,6 +142,7 @@ export function useSettings() {
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: unknown) {
       console.error("Failed to save settings", err);
+      toast.error("Failed to save settings");
     } finally {
       setSaving(false);
     }
@@ -155,6 +157,7 @@ export function useSettings() {
       window.location.reload();
     } catch (err: unknown) {
       console.error("Failed to delete merchant", err);
+      toast.error("Failed to delete merchant");
       setDeleting(false);
       setDeleteDialogOpen(false);
     }

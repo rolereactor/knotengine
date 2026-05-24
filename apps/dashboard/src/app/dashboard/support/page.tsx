@@ -25,24 +25,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 
+const DOCS_URL = "https://docs.knotengine.com";
+
 const HELP_CATEGORIES = [
   {
     title: "Integration Guide",
     description: "SDKs, API reference, and platform webhooks.",
     icon: FileText,
     color: "bg-blue-500/10 text-blue-500",
+    href: `${DOCS_URL}/integration`,
   },
   {
     title: "Billing & Payouts",
     description: "Fee structure, settlement logic, and limits.",
     icon: HelpCircle,
     color: "bg-emerald-500/10 text-emerald-500",
+    href: `${DOCS_URL}/billing`,
   },
   {
     title: "Security & Keys",
     description: "API key safety, scoped access, and IP-whitelisting.",
     icon: BookOpen,
     color: "bg-purple-500/10 text-purple-500",
+    href: `${DOCS_URL}/security`,
   },
 ];
 
@@ -54,6 +59,10 @@ const FAQS = [
 ];
 
 export default function SupportPage() {
+  const openSupport = () => {
+    window.open("mailto:support@knotengine.com", "_blank");
+  };
+
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-8">
       <div className="space-y-2 py-8 text-center">
@@ -76,6 +85,7 @@ export default function SupportPage() {
         {HELP_CATEGORIES.map((cat) => (
           <Card
             key={cat.title}
+            onClick={() => window.open(cat.href, "_blank")}
             className="bg-background/50 hover:bg-background/80 group cursor-pointer border border-none transition-all"
           >
             <CardHeader>
@@ -127,6 +137,7 @@ export default function SupportPage() {
           </div>
           <Button
             variant="link"
+            onClick={() => window.open(DOCS_URL, "_blank")}
             className="text-primary h-auto p-0 text-[10px] font-bold tracking-widest uppercase"
           >
             View All Documentation
@@ -171,7 +182,10 @@ export default function SupportPage() {
             </div>
           </CardContent>
           <CardFooter>
-            <Button className="bg-primary shadow-primary/20 w-full gap-2 py-6 text-xs font-bold tracking-widest uppercase shadow-xl">
+            <Button
+              onClick={openSupport}
+              className="bg-primary shadow-primary/20 w-full gap-2 py-6 text-xs font-bold tracking-widest uppercase shadow-xl"
+            >
               <Send className="size-4" />
               Start Support Session
             </Button>
@@ -196,6 +210,9 @@ export default function SupportPage() {
         </div>
         <Button
           variant="outline"
+          onClick={() =>
+            window.open("https://knotengine.com/pricing", "_blank")
+          }
           className="px-8 text-[10px] font-bold tracking-widest uppercase"
         >
           Upgrade for Enterprise
