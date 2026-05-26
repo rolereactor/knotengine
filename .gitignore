@@ -9,3 +9,7 @@ dist
 .next
 .turbo
 *.log
+
+# Local IDE / AI tooling
+.claude/
+.agents/
