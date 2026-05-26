@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { Merchant, ApiKey } from "@qodinger/knot-database";
 import * as crypto from "crypto";
 import { safeCompare } from "../utils/crypto.js";
+import { apiError } from "../utils/api-error.js";
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -28,15 +29,18 @@ export const requireAuth = async (
     if (foundKey) {
       const merchant = foundKey.merchantId as any;
       if (!merchant.isActive || merchant.isDeleted) {
-        return reply
-          .code(403)
-          .send({ error: "Merchant account suspended or deleted" });
+        return apiError(
+          reply,
+          403,
+          "merchant_suspended",
+          "This merchant account is suspended or deleted.",
+        );
       }
       request.merchant = merchant;
       return;
     }
 
-    return reply.code(401).send({ error: "Invalid API Key" });
+    return apiError(reply, 401, "invalid_api_key", "Invalid API key.");
   }
 
   // Internal OAuth proxy auth
@@ -64,8 +68,13 @@ export const requireAuth = async (
       request.merchant = merchant;
       return;
     }
-    return reply.code(401).send({ error: "Merchant not found" });
+    return apiError(
+      reply,
+      401,
+      "merchant_not_found",
+      "No merchant found for this identity.",
+    );
   }
 
-  return reply.code(401).send({ error: "Unauthorized" });
+  return apiError(reply, 401, "unauthorized", "Authentication required.");
 };

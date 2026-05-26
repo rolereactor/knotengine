@@ -2,6 +2,7 @@ import { FastifyRequest, FastifyReply } from "fastify";
 import { MerchantMember } from "@qodinger/knot-database";
 import { escapeRegExp } from "./auth.middleware.js";
 import { safeCompare } from "../utils/crypto.js";
+import { apiError } from "../utils/api-error.js";
 
 export type AuthType = "api_key" | "oauth";
 
@@ -19,23 +20,31 @@ export const requireMerchantAccess = async (
   const targetMerchantId = (request.params as Record<string, string>)
     .merchantId;
   if (!targetMerchantId) {
-    return reply.code(400).send({ error: "Merchant ID required" });
+    return apiError(
+      reply,
+      400,
+      "invalid_request",
+      "Merchant ID is required.",
+      "merchant_id",
+    );
   }
 
   if (request.authType === "api_key") {
     const requestMerchant = (request as any).merchant;
     if (!requestMerchant) {
-      return reply.code(401).send({ error: "Unauthorized" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     }
 
     if (
       requestMerchant.merchantId !== targetMerchantId &&
       requestMerchant._id.toString() !== targetMerchantId
     ) {
-      return reply.code(403).send({
-        error: "API key does not match requested merchant",
-        code: "MERCHANT_MISMATCH",
-      });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "This API key does not have access to the requested merchant.",
+      );
     }
     return;
   }
@@ -47,7 +56,7 @@ export const requireMerchantAccess = async (
     !oauthId ||
     !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
   ) {
-    return reply.code(401).send({ error: "Unauthorized" });
+    return apiError(reply, 401, "unauthorized", "Authentication required.");
   }
 
   const User = (await import("@qodinger/knot-database")).User;
@@ -58,19 +67,31 @@ export const requireMerchantAccess = async (
   });
 
   if (!user) {
-    return reply.code(404).send({ error: "User not found" });
+    return apiError(
+      reply,
+      404,
+      "user_not_found",
+      "No user found for this identity.",
+    );
   }
 
   const merchant = await Merchant.findOne({ merchantId: targetMerchantId });
   if (!merchant) {
-    return reply.code(404).send({ error: "Merchant not found" });
+    return apiError(
+      reply,
+      404,
+      "merchant_not_found",
+      "No merchant found with that ID.",
+    );
   }
 
   if (!merchant.isActive || merchant.isDeleted) {
-    return reply.code(403).send({
-      error: "Merchant account suspended",
-      code: "MERCHANT_SUSPENDED",
-    });
+    return apiError(
+      reply,
+      403,
+      "merchant_suspended",
+      "This merchant account is suspended or deleted.",
+    );
   }
 
   const membership = await MerchantMember.findOne({
@@ -80,10 +101,12 @@ export const requireMerchantAccess = async (
   });
 
   if (!membership) {
-    return reply.code(403).send({
-      error: "Access denied to this merchant",
-      code: "ACCESS_DENIED",
-    });
+    return apiError(
+      reply,
+      403,
+      "forbidden",
+      "You do not have access to this merchant.",
+    );
   }
 
   request.membership = membership;

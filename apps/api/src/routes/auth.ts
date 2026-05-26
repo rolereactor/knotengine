@@ -8,6 +8,7 @@ import {
   isValidEmail,
   MAX_EMAIL_LENGTH,
 } from "@qodinger/knot-types";
+import { apiError } from "../utils/api-error.js";
 
 const sanitizeEmailInput = (val: string) =>
   limitLength(stripHtmlTags(val).toLowerCase().trim(), MAX_EMAIL_LENGTH);
@@ -52,11 +53,12 @@ export async function authRoutes(app: FastifyInstance) {
 
     const result = checkAuthRateLimit(request.ip);
     if (!result.allowed) {
-      return reply.code(429).send({
-        error: "Too Many Requests",
-        message: "Too many authentication attempts. Please try again later.",
-        retryAfter: `${result.retryAfter}s`,
-      });
+      return apiError(
+        reply,
+        429,
+        "rate_limit_exceeded",
+        `Too many authentication attempts. Please try again in ${result.retryAfter}s.`,
+      );
     }
   });
 

@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import { FastifyReply } from "fastify";
 import { Merchant, MerchantMember, User } from "@qodinger/knot-database";
 import { Types } from "mongoose";
 import * as crypto from "crypto";
@@ -7,8 +7,8 @@ import { escapeRegExp } from "../middleware/auth.middleware.js";
 import { getPlanLimits, checkPlanLimit } from "@qodinger/knot-types";
 import { EmailService } from "../infra/email-service.js";
 import { safeCompare } from "../utils/crypto.js";
-
-type RoleType = "owner" | "admin" | "developer" | "viewer" | "billing";
+import { apiError } from "../utils/api-error.js";
+import { RedisClient } from "../infra/redis-client.js";
 
 interface AuthContext {
   user: any;
@@ -28,7 +28,7 @@ async function resolveAuth(
     !oauthId ||
     !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
   ) {
-    reply.code(401).send({ error: "Unauthorized" });
+    apiError(reply, 401, "unauthorized", "Authentication required.");
     return null;
   }
 
@@ -36,22 +36,29 @@ async function resolveAuth(
     oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
   });
   if (!user) {
-    reply.code(404).send({ error: "User not found" });
+    apiError(reply, 404, "user_not_found", "No user found for this identity.");
     return null;
   }
 
   const merchantId = request.params.merchantId;
   const merchant = await Merchant.findOne({ merchantId });
   if (!merchant) {
-    reply.code(404).send({ error: "Merchant not found" });
+    apiError(
+      reply,
+      404,
+      "merchant_not_found",
+      "No merchant found with that ID.",
+    );
     return null;
   }
 
   if (!merchant.isActive || merchant.isDeleted) {
-    reply.code(403).send({
-      error: "Merchant account suspended",
-      code: "MERCHANT_SUSPENDED",
-    });
+    apiError(
+      reply,
+      403,
+      "merchant_suspended",
+      "This merchant account is suspended.",
+    );
     return null;
   }
 
@@ -74,7 +81,12 @@ async function resolveAuth(
   }
 
   if (!membership) {
-    reply.code(403).send({ error: "Access denied" });
+    apiError(
+      reply,
+      403,
+      "forbidden",
+      "You do not have access to this merchant.",
+    );
     return null;
   }
 
@@ -114,32 +126,45 @@ export const MerchantTeamController = {
     };
   },
 
-  inviteMember: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-      Body: { email: string; role: RoleType };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  inviteMember: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
-    const { email, role } = (request as any).body;
+    const { email, role } = request.body;
     const { merchant, membership: requesterMembership, user } = ctx;
 
+    // Idempotency: prevent duplicate invite emails on network retries
+    const idempotencyKey = request.headers["idempotency-key"] as
+      | string
+      | undefined;
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:team_invite:${merchant._id}:${idempotencyKey}`;
+      const cached = await RedisClient.get<object>(cacheKey);
+      if (cached) {
+        return reply.header("Idempotent-Replayed", "true").send(cached);
+      }
+    }
+
     if (role === "owner") {
-      return reply.code(400).send({
-        error: "Cannot invite as owner. Use transfer ownership instead.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Cannot invite as owner. Use transfer ownership instead.",
+        "role",
+      );
     }
 
     if (
       requesterMembership.role !== "owner" &&
       requesterMembership.role !== "admin"
     ) {
-      return reply
-        .code(403)
-        .send({ error: "Only owners and admins can invite members" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Only owners and admins can invite members.",
+      );
     }
 
     const currentSeatCount = await MerchantMember.countDocuments({
@@ -153,12 +178,12 @@ export const MerchantTeamController = {
       currentSeatCount,
     );
     if (!seatCheck.allowed) {
-      return reply.code(403).send({
-        error: `Team seat limit reached for ${merchant.plan} plan (${limits.maxTeamSeats} max). Upgrade to add more members.`,
-        code: "LIMIT_EXCEEDED",
-        limit: limits.maxTeamSeats,
-        current: currentSeatCount,
-      });
+      return apiError(
+        reply,
+        403,
+        "plan_limit_reached",
+        `Team seat limit reached for the ${merchant.plan} plan (${limits.maxTeamSeats} max). Upgrade to add more members.`,
+      );
     }
 
     const existingMember = await MerchantMember.findOne({
@@ -171,7 +196,12 @@ export const MerchantTeamController = {
 
     if (existingMember) {
       if (existingMember.accepted) {
-        return reply.code(409).send({ error: "User is already a member" });
+        return apiError(
+          reply,
+          409,
+          "conflict",
+          "This user is already a member of the merchant.",
+        );
       }
 
       if (
@@ -194,7 +224,12 @@ export const MerchantTeamController = {
         };
       }
 
-      return reply.code(409).send({ error: "Pending invite already exists" });
+      return apiError(
+        reply,
+        409,
+        "conflict",
+        "A pending invite already exists for this email address.",
+      );
     }
 
     const inviteToken = crypto.randomBytes(32).toString("hex");
@@ -221,53 +256,71 @@ export const MerchantTeamController = {
       dashboardUrl,
     }).catch((err) => console.error("Failed to send invite email:", err));
 
-    await AuditLogger.account(
-      user._id.toString(),
-      "member_invited",
-      request as any,
-      { merchantId: merchant.merchantId, email, role },
-    );
+    await AuditLogger.account(user._id.toString(), "member_invited", request, {
+      merchantId: merchant.merchantId,
+      email,
+      role,
+    });
 
-    return {
+    const responseBody = {
       success: true,
       message: `Invite sent to ${email}`,
     };
+
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:team_invite:${merchant._id}:${idempotencyKey}`;
+      RedisClient.set(cacheKey, responseBody, 86400).catch(() => {});
+    }
+
+    return responseBody;
   },
 
-  updateMemberRole: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; memberId: string };
-      Body: { role: RoleType; reason?: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  updateMemberRole: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
-    const { role, reason } = (request as any).body;
+    const { role, reason } = request.body;
     const { merchant, membership: requesterMembership, user } = ctx;
 
     if (requesterMembership.role !== "owner") {
-      return reply.code(403).send({ error: "Only owners can change roles" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Only owners can change member roles.",
+      );
     }
 
     const targetMembership = await MerchantMember.findById(
       request.params.memberId,
     );
     if (!targetMembership) {
-      return reply.code(404).send({ error: "Member not found" });
+      return apiError(
+        reply,
+        404,
+        "team_member_not_found",
+        "No member found with that ID.",
+      );
     }
 
     if (targetMembership.merchantId.toString() !== merchant._id.toString()) {
-      return reply
-        .code(400)
-        .send({ error: "Member does not belong to this merchant" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This member does not belong to your merchant.",
+        "member_id",
+      );
     }
 
     if (role === "owner") {
-      return reply.code(400).send({
-        error: "Cannot promote to owner. Use transfer ownership instead.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Cannot promote to owner. Use transfer ownership instead.",
+        "role",
+      );
     }
 
     const oldRole = targetMembership.role;
@@ -281,119 +334,140 @@ export const MerchantTeamController = {
     });
     await targetMembership.save();
 
-    await AuditLogger.account(
-      user._id.toString(),
-      "role_updated",
-      request as any,
-      {
-        merchantId: merchant.merchantId,
-        memberId: targetMembership._id.toString(),
-        from: oldRole,
-        to: role,
-        reason,
-      },
-    );
+    await AuditLogger.account(user._id.toString(), "role_updated", request, {
+      merchantId: merchant.merchantId,
+      memberId: targetMembership._id.toString(),
+      from: oldRole,
+      to: role,
+      reason,
+    });
 
     return { success: true };
   },
 
-  removeMember: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; memberId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  removeMember: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, membership: requesterMembership, user } = ctx;
     const memberId = request.params.memberId;
 
     if (memberId === requesterMembership._id.toString()) {
-      return reply.code(400).send({
-        error:
-          "Cannot remove yourself. Transfer ownership or contact another owner.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Cannot remove yourself. Transfer ownership or use the leave endpoint.",
+      );
     }
 
     if (requesterMembership.role !== "owner") {
-      return reply.code(403).send({ error: "Only owners can remove members" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Only owners can remove members.",
+      );
     }
 
     const targetMembership = await MerchantMember.findById(memberId);
     if (!targetMembership) {
-      return reply.code(404).send({ error: "Member not found" });
+      return apiError(
+        reply,
+        404,
+        "team_member_not_found",
+        "No member found with that ID.",
+      );
     }
 
     if (targetMembership.merchantId.toString() !== merchant._id.toString()) {
-      return reply
-        .code(400)
-        .send({ error: "Member does not belong to this merchant" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This member does not belong to your merchant.",
+        "member_id",
+      );
     }
 
     if (targetMembership.role === "owner") {
       const ownerCount = await countOwners(merchant._id);
       if (ownerCount === 1) {
-        return reply.code(400).send({
-          error: "Cannot remove the last owner. Transfer ownership first.",
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Cannot remove the last owner. Transfer ownership first.",
+        );
       }
     }
 
     await MerchantMember.deleteOne({ _id: memberId });
 
-    await AuditLogger.account(
-      user._id.toString(),
-      "member_removed",
-      request as any,
-      {
-        merchantId: merchant.merchantId,
-        removedMemberId: memberId,
-        removedRole: targetMembership.role,
-      },
-    );
+    await AuditLogger.account(user._id.toString(), "member_removed", request, {
+      merchantId: merchant.merchantId,
+      removedMemberId: memberId,
+      removedRole: targetMembership.role,
+    });
 
     return { success: true };
   },
 
-  transferOwnership: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-      Body: { newOwnerId: string; reason?: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  transferOwnership: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
-    const { newOwnerId, reason } = (request as any).body;
+    const { newOwnerId, reason } = request.body;
     const { merchant, membership: requesterMembership, user } = ctx;
 
     if (requesterMembership.role !== "owner") {
-      return reply
-        .code(403)
-        .send({ error: "Only owners can transfer ownership" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Only owners can transfer ownership.",
+      );
     }
 
     const newOwnerMembership = await MerchantMember.findById(newOwnerId);
     if (!newOwnerMembership) {
-      return reply.code(404).send({ error: "Target member not found" });
+      return apiError(
+        reply,
+        404,
+        "team_member_not_found",
+        "No member found with that ID.",
+        "new_owner_id",
+      );
     }
 
     if (newOwnerMembership.merchantId.toString() !== merchant._id.toString()) {
-      return reply
-        .code(400)
-        .send({ error: "Target member does not belong to this merchant" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This member does not belong to your merchant.",
+        "new_owner_id",
+      );
     }
 
     if (!newOwnerMembership.accepted) {
-      return reply
-        .code(400)
-        .send({ error: "Target member has not accepted invite" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "The target member has not accepted their invite yet.",
+        "new_owner_id",
+      );
     }
 
     if (newOwnerMembership.userId.toString() === user._id.toString()) {
-      return reply.code(400).send({ error: "Cannot transfer to yourself" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Cannot transfer ownership to yourself.",
+        "new_owner_id",
+      );
     }
 
     const session = await Merchant.startSession();
@@ -427,7 +501,7 @@ export const MerchantTeamController = {
       await AuditLogger.account(
         user._id.toString(),
         "ownership_transferred",
-        request as any,
+        request,
         {
           merchantId: merchant.merchantId,
           from: user._id.toString(),
@@ -448,16 +522,11 @@ export const MerchantTeamController = {
     }
   },
 
-  acceptInvite: async (
-    request: FastifyRequest<{
-      Body: { inviteToken: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply, false);
+  acceptInvite: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply, false);
     if (!ctx) return;
 
-    const { inviteToken } = (request as any).body;
+    const { inviteToken } = request.body;
     const { user } = ctx;
 
     const membership = await MerchantMember.findOne({
@@ -467,16 +536,25 @@ export const MerchantTeamController = {
     });
 
     if (!membership) {
-      return reply.code(404).send({ error: "Invalid or expired invite" });
+      return apiError(
+        reply,
+        404,
+        "not_found",
+        "Invalid or expired invite token.",
+        "invite_token",
+      );
     }
 
     if (
       membership.userId &&
       membership.userId.toString() !== user._id.toString()
     ) {
-      return reply
-        .code(403)
-        .send({ error: "This invite belongs to another user" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "This invite belongs to a different user.",
+      );
     }
 
     membership.userId = user._id;
@@ -485,15 +563,9 @@ export const MerchantTeamController = {
     membership.inviteToken = undefined;
     await membership.save();
 
-    await AuditLogger.account(
-      user._id.toString(),
-      "invite_accepted",
-      request as any,
-      {
-        merchantId: (await Merchant.findById(membership.merchantId))
-          ?.merchantId,
-      },
-    );
+    await AuditLogger.account(user._id.toString(), "invite_accepted", request, {
+      merchantId: (await Merchant.findById(membership.merchantId))?.merchantId,
+    });
 
     return {
       success: true,
@@ -501,13 +573,8 @@ export const MerchantTeamController = {
     };
   },
 
-  leaveMerchant: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  leaveMerchant: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, membership, user } = ctx;
@@ -515,20 +582,20 @@ export const MerchantTeamController = {
     if (membership.role === "owner") {
       const ownerCount = await countOwners(merchant._id);
       if (ownerCount === 1) {
-        return reply.code(400).send({
-          error: "Cannot leave as the last owner. Transfer ownership first.",
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Cannot leave as the last owner. Transfer ownership first.",
+        );
       }
     }
 
     await MerchantMember.deleteOne({ _id: membership._id });
 
-    await AuditLogger.account(
-      user._id.toString(),
-      "member_left",
-      request as any,
-      { merchantId: merchant.merchantId },
-    );
+    await AuditLogger.account(user._id.toString(), "member_left", request, {
+      merchantId: merchant.merchantId,
+    });
 
     return { success: true, message: "You have left the merchant" };
   },
@@ -566,7 +633,12 @@ export const MerchantTeamController = {
       .sort({ role: 1, "merchantId.createdAt": -1 });
 
     if (memberships.length === 0) {
-      return reply.code(404).send({ error: "No merchants found" });
+      return apiError(
+        reply,
+        404,
+        "merchant_not_found",
+        "No merchants found for this user.",
+      );
     }
 
     const defaultMembership = memberships[0];
@@ -577,21 +649,22 @@ export const MerchantTeamController = {
     };
   },
 
-  setDefaultMerchant: async (
-    request: FastifyRequest<{
-      Body: { merchantId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  setDefaultMerchant: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
-    const { merchantId } = (request as any).body;
+    const { merchantId } = request.body;
     const { user } = ctx;
 
     const merchant = await Merchant.findOne({ merchantId });
     if (!merchant) {
-      return reply.code(404).send({ error: "Merchant not found" });
+      return apiError(
+        reply,
+        404,
+        "merchant_not_found",
+        "No merchant found with that ID.",
+        "merchant_id",
+      );
     }
 
     const membership = await MerchantMember.findOne({
@@ -601,9 +674,12 @@ export const MerchantTeamController = {
     });
 
     if (!membership) {
-      return reply
-        .code(403)
-        .send({ error: "You are not a member of this merchant" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "You are not a member of this merchant.",
+      );
     }
 
     await User.findByIdAndUpdate(user._id, {

@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
+import { apiError } from "../utils/api-error.js";
 
 interface RateLimitEntry {
   count: number;
@@ -53,10 +54,11 @@ export const merchantRateLimit = async (
   reply.header("X-RateLimit-Reset", new Date(entry.resetAt).toISOString());
 
   if (entry.count > limits.max) {
-    return reply.code(429).send({
-      error: "Rate limit exceeded",
-      code: "RATE_LIMITED",
-      retryAfter: Math.ceil((entry.resetAt - now) / 1000),
-    });
+    return apiError(
+      reply,
+      429,
+      "rate_limit_exceeded",
+      `Rate limit exceeded. Retry after ${Math.ceil((entry.resetAt - now) / 1000)} seconds.`,
+    );
   }
 };

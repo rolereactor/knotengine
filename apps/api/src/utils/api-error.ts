@@ -9,6 +9,8 @@ export type ErrorCode =
   | "unauthorized"
   | "forbidden"
   | "invalid_api_key"
+  // Users
+  | "user_not_found"
   // Invoices
   | "invoice_not_found"
   | "invoice_already_cancelled"
@@ -23,6 +25,14 @@ export type ErrorCode =
   | "merchant_not_found"
   | "merchant_suspended"
   | "merchant_deleted"
+  // API Keys
+  | "api_key_not_found"
+  // Webhook Endpoints
+  | "webhook_endpoint_not_found"
+  // Team
+  | "team_member_not_found"
+  // Plans
+  | "plan_limit_reached"
   // Idempotency
   | "idempotency_conflict"
   // Generic

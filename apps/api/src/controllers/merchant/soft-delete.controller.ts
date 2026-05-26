@@ -1,23 +1,24 @@
-import { FastifyReply, FastifyRequest } from "fastify";
+import { FastifyReply } from "fastify";
 import { Merchant, MerchantMember, User } from "@qodinger/knot-database";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { escapeRegExp } from "../../middleware/auth.middleware.js";
 import { safeCompare } from "../../utils/crypto.js";
+import { apiError } from "../../utils/api-error.js";
 
 export const MerchantSoftDeleteController = {
-  softDelete: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  softDelete: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, user } = ctx;
 
     if (merchant.isDeleted) {
-      return reply.code(400).send({ error: "Merchant is already deleted" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This merchant is already deleted.",
+      );
     }
 
     const ownerCount = await MerchantMember.countDocuments({
@@ -27,10 +28,12 @@ export const MerchantSoftDeleteController = {
     });
 
     if (ownerCount > 1) {
-      return reply.code(400).send({
-        error:
-          "Cannot delete merchant while multiple owners exist. Transfer ownership first.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Cannot delete a merchant with multiple owners. Transfer ownership to a single owner first.",
+      );
     }
 
     await Merchant.findByIdAndUpdate(merchant._id, {
@@ -46,7 +49,7 @@ export const MerchantSoftDeleteController = {
     await AuditLogger.account(
       user._id.toString(),
       "merchant_deleted",
-      request as any,
+      request,
       { merchantId: merchant.merchantId, reason: "soft_delete" },
     );
 
@@ -58,19 +61,19 @@ export const MerchantSoftDeleteController = {
     };
   },
 
-  restore: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  restore: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
 
     if (!merchant.isDeleted) {
-      return reply.code(400).send({ error: "Merchant is not deleted" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This merchant is not deleted.",
+      );
     }
 
     await Merchant.findByIdAndUpdate(merchant._id, {
@@ -88,21 +91,16 @@ export const MerchantSoftDeleteController = {
     };
   },
 
-  getDeletedStatus: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  getDeletedStatus: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
 
     return {
-      isDeleted: merchant.isDeleted,
-      deletedAt: merchant.deletedAt,
-      canRestore: merchant.isDeleted,
+      is_deleted: merchant.isDeleted,
+      deleted_at: merchant.deletedAt,
+      can_restore: merchant.isDeleted,
     };
   },
 };
@@ -118,7 +116,7 @@ async function resolveAuth(
     !oauthId ||
     !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
   ) {
-    reply.code(401).send({ error: "Unauthorized" });
+    apiError(reply, 401, "unauthorized", "Authentication required.");
     return null;
   }
 
@@ -126,14 +124,19 @@ async function resolveAuth(
     oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
   });
   if (!user) {
-    reply.code(404).send({ error: "User not found" });
+    apiError(reply, 404, "user_not_found", "No user found for this identity.");
     return null;
   }
 
   const merchantId = request.params.merchantId;
   const merchant = await Merchant.findOne({ merchantId });
   if (!merchant) {
-    reply.code(404).send({ error: "Merchant not found" });
+    apiError(
+      reply,
+      404,
+      "merchant_not_found",
+      "No merchant found with that ID.",
+    );
     return null;
   }
 
@@ -145,7 +148,12 @@ async function resolveAuth(
   });
 
   if (!membership) {
-    reply.code(403).send({ error: "Only owners can delete merchants" });
+    apiError(
+      reply,
+      403,
+      "forbidden",
+      "Only owners can delete or restore a merchant.",
+    );
     return null;
   }
 

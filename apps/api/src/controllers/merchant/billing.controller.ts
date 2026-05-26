@@ -1,30 +1,46 @@
 import { FastifyReply } from "fastify";
 import { Invoice, Merchant, TopUpClaim, User } from "@qodinger/knot-database";
+import { apiError } from "../../utils/api-error.js";
 import { PLAN_COSTS } from "@qodinger/knot-types";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { isSelfHosted } from "../../core/self-hosted-mode.js";
 import { NotificationService } from "../../infra/notification-service.js";
 import { PriceOracle } from "../../infra/price-feed.js";
 import { TxVerifier } from "../../infra/tx-verifier.js";
+import { RedisClient } from "../../infra/redis-client.js";
 
 export const MerchantBillingController = {
   updatePlan: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     if (isSelfHosted()) {
-      return reply.code(403).send({
-        error:
-          "Plan changes are disabled in self-hosted mode. All features are unlocked automatically.",
-        selfHosted: true,
-      });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Plan changes are disabled in self-hosted mode. All features are unlocked automatically.",
+      );
+    }
+
+    // Idempotency: replay cached response if client retries with the same key
+    const idempotencyKey = request.headers["idempotency-key"] as
+      | string
+      | undefined;
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:plan:${merchant._id}:${idempotencyKey}`;
+      const cached = await RedisClient.get<object>(cacheKey);
+      if (cached) {
+        return reply.header("Idempotent-Replayed", "true").send(cached);
+      }
     }
 
     const { plan: newPlan } = request.body;
     const currentPlan = merchant.plan || "starter";
 
     if (newPlan === currentPlan) {
-      return reply.code(400).send({ error: "Already on this plan." });
+      return apiError(reply, 400, "invalid_request", "Already on this plan.");
     }
 
     const cost = PLAN_COSTS[newPlan] ?? 0;
@@ -62,12 +78,12 @@ export const MerchantBillingController = {
         ? await User.findById(merchant.userId)
         : null;
       if (!user || user.creditBalance < chargeAmount) {
-        return reply.code(400).send({
-          error: `Insufficient balance to upgrade to ${newPlan}. You need at least $${chargeAmount.toFixed(2)} in credits${isProrated ? " (prorated for this month)" : ""}.`,
-          required: chargeAmount,
-          currentBalance: user?.creditBalance || 0,
-          isProrated,
-        });
+        return apiError(
+          reply,
+          400,
+          "insufficient_credit",
+          `Insufficient balance to upgrade to ${newPlan}. You need at least $${chargeAmount.toFixed(2)} in credits${isProrated ? " (prorated for this month)" : ""}.`,
+        );
       }
 
       // Deduct prorated amount immediately
@@ -119,15 +135,23 @@ export const MerchantBillingController = {
       },
     );
 
-    return {
+    const responseBody = {
       success: true,
       plan: newPlan,
       message: `Plan updated to ${newPlan} successfully.`,
     };
+
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:plan:${merchant._id}:${idempotencyKey}`;
+      RedisClient.set(cacheKey, responseBody, 86400).catch(() => {});
+    }
+
+    return responseBody;
   },
   getStats: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const { period } = request.query as { period: string };
 
@@ -325,7 +349,8 @@ export const MerchantBillingController = {
   },
   topUp: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const { txHash, currency } = request.body;
 
@@ -333,10 +358,12 @@ export const MerchantBillingController = {
       // 1. Prevent double spend
       const existingClaim = await TopUpClaim.findOne({ txHash });
       if (existingClaim) {
-        return reply.code(400).send({
-          error: "Transaction has already been claimed for top-up credits.",
-          status: existingClaim.status,
-        });
+        return apiError(
+          reply,
+          400,
+          "conflict",
+          "This transaction has already been claimed for top-up credits.",
+        );
       }
 
       // 2. Identify the expected platform wallet
@@ -348,18 +375,23 @@ export const MerchantBillingController = {
         "USDC_POLYGON",
       ];
       if (!STABLECOINS.includes(currency)) {
-        return reply.code(400).send({
-          error:
-            "Top-ups are strictly limited to Stablecoins (USDT/USDC) on Polygon or Ethereum.",
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Top-ups are strictly limited to Stablecoins (USDT/USDC) on Polygon or Ethereum.",
+        );
       }
 
       const expectedAddress = process.env.PLATFORM_FEE_WALLET_EVM || "";
 
       if (!expectedAddress) {
-        return reply.code(500).send({
-          error: `Platform fee wallet for ${currency} is not configured.`,
-        });
+        return apiError(
+          reply,
+          503,
+          "internal_error",
+          `Platform fee wallet for ${currency} is not configured.`,
+        );
       }
 
       // 3. Verify on the blockchain
@@ -370,10 +402,12 @@ export const MerchantBillingController = {
       );
 
       if (!verification.isValid || verification.amountCrypto <= 0) {
-        return reply.code(400).send({
-          error:
-            "Transaction verification failed. Ensure the transaction is confirmed and sent to the correct platform address.",
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Transaction verification failed. Ensure the transaction is confirmed and sent to the correct platform address.",
+        );
       }
 
       // 4. Calculate USD Value
@@ -519,39 +553,61 @@ export const MerchantBillingController = {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       console.error(`Topup Error: ${message}`);
-      return reply.code(500).send({ error: "Internal top-up error" });
+      return apiError(reply, 500, "internal_error", "Internal top-up error.");
     }
   },
   chargePlan: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     // Check if merchant is in grace period
     if (!merchant.gracePeriodStarted || !merchant.gracePeriodEnds) {
-      return reply.code(400).send({ error: "Not in grace period" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This merchant is not currently in a grace period.",
+      );
     }
 
     if (new Date() >= merchant.gracePeriodEnds) {
-      return reply.code(400).send({ error: "Grace period expired" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Grace period has expired.",
+      );
     }
 
     const planCost = PLAN_COSTS[merchant.plan] ?? 0;
     if (planCost === 0) {
-      return reply.code(400).send({ error: "Starter plan has no cost" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "The starter plan has no cost.",
+      );
     }
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
 
     if (!user) {
-      return reply.code(400).send({ error: "User not found" });
+      return apiError(
+        reply,
+        404,
+        "user_not_found",
+        "No user found for this merchant.",
+      );
     }
 
     if (user.creditBalance < planCost) {
-      return reply.code(400).send({
-        error: "Insufficient balance",
-        required: planCost,
-        currentBalance: user.creditBalance,
-      });
+      return apiError(
+        reply,
+        400,
+        "insufficient_credit",
+        `Insufficient balance. You need $${planCost.toFixed(2)} to cover this plan.`,
+      );
     }
 
     try {
@@ -585,7 +641,12 @@ export const MerchantBillingController = {
       });
     } catch (error) {
       console.error("Failed to charge plan:", error);
-      return reply.code(500).send({ error: "Failed to process payment" });
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        "Failed to process payment.",
+      );
     }
   },
 };

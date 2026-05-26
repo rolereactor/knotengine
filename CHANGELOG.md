@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[Developer] OAuth Configuration** — Added streamlined configurations to easily set up OAuth providers.
 - **[Platform] USDC Support** — Added support for USDC as an accepted currency for platform plans.
 - **[Developer] One-Click Setup** — Added a convenient `pnpm start` command for one-command local development setup.
+- **[API] Error Monitoring** — Integrated Sentry for automatic exception tracking in production. Opt-in via `SENTRY_DSN`; the API operates normally without it.
+- **[API] Deep Health Check** — New `/health/deep` endpoint reports the live status of all external dependencies (database, Redis, blockchain providers).
+- **[API] Idempotency on Invoice Creation** — `POST /v1/invoices` now accepts an `Idempotency-Key` header; retried requests safely return the original response instead of creating duplicate invoices.
+- **[API] Team Profile Images** — Team member API responses now include each member's profile image URL and a flag identifying the requesting user in the list.
 
 ### Changed
 
@@ -25,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[Developer] CI/CD & Dependabot** — Upgraded GitHub Actions, enabled Docker build caching, and refined Dependabot rules for faster and more stable open-source contributions.
 - **[SDK] TypeScript & ESM Support** — Standardized ESM imports and exported additional types (`PLAN_COSTS`) for a better developer experience when integrating the KnotEngine SDK.
 - **[Dashboard] UI Polish** — Refined the layout and styling of marketing and site headers for a cleaner look.
+- **[API] Consistent Error Responses** — All API errors now return a structured shape with machine-readable `type`, `code`, `message`, and `doc_url` fields for more reliable client-side error handling.
 
 ### Fixed
 
@@ -36,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[Platform] Billing Engine** — Corrected billing price typos, resolved audit logging issues, and enforced plan limits properly.
 - **[Dashboard] Analytics & Hooks** — Aligned analytics periods correctly with checkout types and resolved performance issues in state management hooks.
 - **[CI/CD] Release Notes** — Fixed release note generation in CI to ensure it fetches all necessary git tags.
+- **[API] USDC, Webhook Retries & Metrics** — Fixed USDC invoice processing, corrected the webhook retry counter field name that was silently writing to an orphaned database field, and wired Prometheus metrics collection.
+
+### Security
+
+- **[API] Hardened Internal Endpoints** — Internal API routes now validate `INTERNAL_SECRET` more strictly, suppress raw error details from responses, and correctly trust `X-Forwarded-For` headers from reverse proxies.
+- **[Dashboard & Checkout] Next.js 16.2.6 Security Patch** — Upgraded Next.js from 16.1.6 to 16.2.6, resolving 7 high-severity advisories including denial-of-service via Server Components and middleware/proxy bypass vulnerabilities.
 
 ### Removed
 

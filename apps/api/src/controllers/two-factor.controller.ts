@@ -3,21 +3,30 @@ import * as crypto from "crypto";
 import { FastifyReply } from "fastify";
 import { generateSecret, generateURI, verifySync } from "otplib";
 import * as QRCode from "qrcode";
+import { apiError } from "../utils/api-error.js";
 
 export const TwoFactorController = {
   setup: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
     if (!user)
-      return reply.code(400).send({ error: "User identity not found." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "User identity not found.",
+      );
 
     if (user.twoFactorEnabled) {
-      return reply.code(400).send({
-        error:
-          "Two-factor authentication is already enabled. Disable it first to reconfigure.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Two-factor authentication is already enabled. Disable it first to reconfigure.",
+      );
     }
 
     // Generate a new TOTP secret
@@ -55,23 +64,34 @@ export const TwoFactorController = {
 
   enable: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
     if (!user)
-      return reply.code(400).send({ error: "User identity not found." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "User identity not found.",
+      );
 
     if (user.twoFactorEnabled) {
-      return reply
-        .code(400)
-        .send({ error: "Two-factor authentication is already enabled." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Two-factor authentication is already enabled.",
+      );
     }
 
     if (!user.twoFactorSecret) {
-      return reply.code(400).send({
-        error:
-          "No 2FA setup in progress. Call /2fa/setup first to generate a secret.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "No 2FA setup in progress. Call /2fa/setup first to generate a secret.",
+      );
     }
 
     const { code } = request.body;
@@ -83,9 +103,12 @@ export const TwoFactorController = {
     });
 
     if (!result.valid) {
-      return reply.code(400).send({
-        error: "Invalid verification code. Please try again.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Invalid verification code. Please try again.",
+      );
     }
 
     // Generate 5 one-time-use backup codes
@@ -118,16 +141,25 @@ export const TwoFactorController = {
 
   validate: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
     if (!user)
-      return reply.code(400).send({ error: "User identity not found." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "User identity not found.",
+      );
 
     if (!user.twoFactorEnabled || !user.twoFactorSecret) {
-      return reply.code(400).send({
-        error: "Two-factor authentication is not enabled on this account.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Two-factor authentication is not enabled on this account.",
+      );
     }
 
     const { code } = request.body;
@@ -172,24 +204,30 @@ export const TwoFactorController = {
       });
     }
 
-    return reply.code(401).send({
-      valid: false,
-      error: "Invalid verification code.",
-    });
+    return apiError(reply, 401, "unauthorized", "Invalid verification code.");
   },
 
   disable: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
     if (!user)
-      return reply.code(400).send({ error: "User identity not found." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "User identity not found.",
+      );
 
     if (!user.twoFactorEnabled || !user.twoFactorSecret) {
-      return reply.code(400).send({
-        error: "Two-factor authentication is not currently enabled.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Two-factor authentication is not currently enabled.",
+      );
     }
 
     const { code } = request.body;
@@ -201,9 +239,12 @@ export const TwoFactorController = {
     });
 
     if (!result.valid) {
-      return reply.code(401).send({
-        error: "Invalid code. You must verify your identity to disable 2FA.",
-      });
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Invalid code. You must verify your identity to disable 2FA.",
+      );
     }
 
     // Disable 2FA and clean up secrets
@@ -227,7 +268,8 @@ export const TwoFactorController = {
 
   getStatus: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
 

@@ -10,6 +10,7 @@ import {
   validatorCompiler,
 } from "fastify-type-provider-zod";
 import { merchantRoutes } from "./routes/merchants.js";
+import { apiError } from "./utils/api-error.js";
 import { invoiceRoutes } from "./routes/invoices.js";
 import { webhookRoutes } from "./routes/webhooks.js";
 import { twoFactorRoutes } from "./routes/two-factor.js";
@@ -204,13 +205,14 @@ server.register(rateLimit, {
   max: 100, // 100 requests
   timeWindow: "1 minute",
   allowList: ["127.0.0.1", "::1"], // Whitelist localhost for development
-  errorResponseBuilder: (request, context) => {
-    return {
-      error: "Too Many Requests",
-      message: `Rate limit exceeded. Maximum ${context.max} requests per minute.`,
-      retryAfter: context.after,
-    };
-  },
+  errorResponseBuilder: (_request, context) => ({
+    error: {
+      type: "rate_limit_error",
+      code: "rate_limit_exceeded",
+      message: `Rate limit exceeded. Maximum ${context.max} requests per minute. Retry after ${context.after}.`,
+      doc_url: "https://docs.knotengine.com/api/errors#rate_limit_exceeded",
+    },
+  }),
 });
 
 // Initialize real-time updates
@@ -306,10 +308,12 @@ server.get<{ Params: { currency: string } }>(
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       server.log.warn(`Price fetch failed for ${currency}: ${message}`);
-      return reply.code(400).send({
-        error: "Price Fetch Failed",
-        message: "Unable to retrieve price for the requested asset.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Unable to retrieve price for the requested asset.",
+      );
     }
   },
 );

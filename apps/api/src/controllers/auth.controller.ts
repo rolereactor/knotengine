@@ -4,6 +4,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { AuditLogger } from "../core/audit-logger.js";
 import { EmailService } from "../infra/email-service.js";
 import { safeCompare } from "../utils/crypto.js";
+import { apiError } from "../utils/api-error.js";
 
 const DASHBOARD_URL = process.env.DASHBOARD_URL || "http://localhost:5052";
 
@@ -36,11 +37,12 @@ export const AuthController = {
         emailResult.error,
         `❌ Failed to send magic link to ${email}`,
       );
-      return reply.code(500).send({
-        error: "Unable to send magic link",
-        message:
-          "We encountered an issue sending your login email. Please try again later or contact support.",
-      });
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        "We encountered an issue sending your login email. Please try again later or contact support.",
+      );
     }
 
     request.server.log.info(`✉️ Magic link sent to: ${email}`);
@@ -61,7 +63,7 @@ export const AuthController = {
     });
 
     if (!vt) {
-      return reply.code(401).send({ error: "Invalid or expired token" });
+      return apiError(reply, 401, "unauthorized", "Invalid or expired token.");
     }
 
     // Delete token after use
@@ -142,10 +144,12 @@ export const AuthController = {
     }
 
     if (user.emailVerified) {
-      return reply.code(400).send({
-        error: "Email already verified",
-        message: "This email is already verified. Please login.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This email is already verified. Please login.",
+      );
     }
 
     const token = crypto.randomBytes(32).toString("hex");
@@ -172,11 +176,12 @@ export const AuthController = {
         emailResult.error,
         `❌ Failed to send verification email to ${email}`,
       );
-      return reply.code(500).send({
-        error: "Unable to send verification email",
-        message:
-          "We encountered an issue sending your verification email. Please try again later.",
-      });
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        "We encountered an issue sending your verification email. Please try again later.",
+      );
     }
 
     request.server.log.info(`✉️ Verification email sent to: ${email}`);
@@ -192,12 +197,17 @@ export const AuthController = {
       !oauthId ||
       !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
     ) {
-      return reply.code(401).send({ error: "Unauthorized" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     }
 
     const user = await User.findOne({ oauthId });
     if (!user) {
-      return reply.code(404).send({ error: "User not found" });
+      return apiError(
+        reply,
+        404,
+        "user_not_found",
+        "No user found for this identity.",
+      );
     }
 
     return {
@@ -221,12 +231,17 @@ export const AuthController = {
       !oauthId ||
       !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
     ) {
-      return reply.code(401).send({ error: "Unauthorized" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     }
 
     const user = await User.findOne({ oauthId });
     if (!user) {
-      return reply.code(404).send({ error: "User not found" });
+      return apiError(
+        reply,
+        404,
+        "user_not_found",
+        "No user found for this identity.",
+      );
     }
 
     const { limit, offset, category } = request.query;

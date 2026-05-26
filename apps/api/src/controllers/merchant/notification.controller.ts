@@ -1,10 +1,12 @@
 import { FastifyReply } from "fastify";
 import { Notification } from "@qodinger/knot-database";
+import { apiError } from "../../utils/api-error.js";
 
 export const MerchantNotificationController = {
   getNotifications: async (request: any, _reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return _reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(_reply, 401, "unauthorized", "Authentication required.");
 
     const { limit, offset, invoiceId } = request.query;
 
@@ -33,7 +35,8 @@ export const MerchantNotificationController = {
   },
   markAllNotificationsRead: async (request: any, _reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return _reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(_reply, 401, "unauthorized", "Authentication required.");
 
     await Notification.updateMany(
       { merchantId: merchant._id, isRead: false },
@@ -44,7 +47,8 @@ export const MerchantNotificationController = {
   },
   markNotificationRead: async (request: any, _reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return _reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(_reply, 401, "unauthorized", "Authentication required.");
 
     const { id } = request.params;
 

@@ -1,6 +1,7 @@
 import * as crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConfirmationEngine } from "../core/confirmation-engine.js";
+import { apiError } from "../utils/api-error.js";
 
 // ============================================================
 // Provider-specific types
@@ -60,8 +61,23 @@ export const WebhooksController = {
     request.server.log.info("📡 Incoming Alchemy webhook request...");
     const signingKey = process.env.ALCHEMY_WEBHOOK_SIGNING_KEY;
 
-    // 1. Verify signature if signing key is configured
-    if (signingKey) {
+    // 1. Verify signature — required in production
+    if (!signingKey) {
+      if (process.env.NODE_ENV === "production") {
+        request.server.log.error(
+          "ALCHEMY_WEBHOOK_SIGNING_KEY is not configured",
+        );
+        return apiError(
+          reply,
+          503,
+          "internal_error",
+          "Webhook receiver not configured.",
+        );
+      }
+      request.server.log.warn(
+        "⚠️ Alchemy webhook signature verification disabled (no signing key)",
+      );
+    } else {
       const signature = request.headers["x-alchemy-signature"] as string;
       const rawBody = JSON.stringify(request.body);
 
@@ -83,7 +99,7 @@ export const WebhooksController = {
         request.server.log.warn(
           `⚠️ Alchemy signature mismatch. Header: ${signature}`,
         );
-        return reply.code(401).send({ error: "Invalid signature" });
+        return apiError(reply, 401, "unauthorized", "Invalid signature.");
       }
     }
 
@@ -99,7 +115,12 @@ export const WebhooksController = {
     }
 
     if (!body?.event?.activity) {
-      return reply.code(400).send({ error: "Invalid webhook payload" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Invalid webhook payload.",
+      );
     }
 
     const results = [];
@@ -144,33 +165,53 @@ export const WebhooksController = {
   tatumWebhook: async (request: FastifyRequest, reply: FastifyReply) => {
     const signingKey = process.env.TATUM_WEBHOOK_SECRET;
 
-    // 1. Verify signature if signing key is configured
-    if (signingKey) {
+    // 1. Verify signature — required in production
+    if (!signingKey) {
+      if (process.env.NODE_ENV === "production") {
+        request.server.log.error("TATUM_WEBHOOK_SECRET is not configured");
+        return apiError(
+          reply,
+          503,
+          "internal_error",
+          "Webhook receiver not configured.",
+        );
+      }
+      request.server.log.warn(
+        "⚠️ Tatum webhook signature verification disabled (no signing key)",
+      );
+    } else {
       const signature = request.headers["x-payload-hash"] as string;
       const rawBody = JSON.stringify(request.body);
 
-      const expectedSig = crypto
+      if (!signature) {
+        request.server.log.warn("⚠️ Tatum webhook missing signature header");
+        return apiError(reply, 401, "unauthorized", "Missing signature.");
+      }
+
+      const expectedSigBase64 = crypto
         .createHmac("sha512", signingKey)
         .update(rawBody)
         .digest("base64");
+      const expectedSigHex = crypto
+        .createHmac("sha512", signingKey)
+        .update(rawBody)
+        .digest("hex");
 
-      if (signature && signature !== expectedSig) {
-        const expectedSigHex = crypto
-          .createHmac("sha512", signingKey)
-          .update(rawBody)
-          .digest("hex");
-
-        if (signature !== expectedSigHex) {
-          request.server.log.warn("⚠️ Tatum webhook signature mismatch");
-          return reply.code(401).send({ error: "Invalid signature" });
-        }
+      if (signature !== expectedSigBase64 && signature !== expectedSigHex) {
+        request.server.log.warn("⚠️ Tatum webhook signature mismatch");
+        return apiError(reply, 401, "unauthorized", "Invalid signature.");
       }
     }
 
     const body = request.body as TatumWebhookBody;
 
     if (!body?.address || !body?.txId) {
-      return reply.code(400).send({ error: "Invalid Tatum webhook payload" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Invalid Tatum webhook payload.",
+      );
     }
 
     try {
@@ -194,7 +235,12 @@ export const WebhooksController = {
       return reply.code(200).send(result);
     } catch (err) {
       request.server.log.error(`❌ Error processing Tatum webhook: ${err}`);
-      return reply.code(500).send({ error: "Internal processing error" });
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        "Internal processing error.",
+      );
     }
   },
 
@@ -203,7 +249,12 @@ export const WebhooksController = {
       process.env.NODE_ENV === "production" &&
       !process.env.ALLOW_SIMULATION
     ) {
-      return reply.code(403).send({ error: "Not available in production" });
+      return apiError(
+        reply,
+        403,
+        "forbidden",
+        "Webhook simulation is not available in production.",
+      );
     }
 
     const body = request.body as SimulateWebhookBody & { invoiceId?: string };
@@ -214,15 +265,24 @@ export const WebhooksController = {
       const { Invoice } = await import("@qodinger/knot-database");
       const invoice = await Invoice.findOne({ invoiceId: body.invoiceId });
       if (!invoice) {
-        return reply.code(404).send({ error: "Invoice not found" });
+        return apiError(
+          reply,
+          404,
+          "invoice_not_found",
+          "No invoice found with that ID.",
+        );
       }
       targetAddress = invoice.payAddress;
     }
 
     if (!targetAddress || !body.txHash) {
-      return reply
-        .code(400)
-        .send({ error: "toAddress (or invoiceId) and txHash are required" });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "toAddress (or invoiceId) and txHash are required.",
+        "to_address",
+      );
     }
 
     const result = await ConfirmationEngine.processBlockchainEvent({

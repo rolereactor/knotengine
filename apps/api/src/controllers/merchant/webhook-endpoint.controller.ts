@@ -1,10 +1,17 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { Merchant, WebhookEndpoint, User } from "@qodinger/knot-database";
+import { FastifyReply } from "fastify";
+import {
+  Merchant,
+  MerchantMember,
+  WebhookEndpoint,
+  User,
+} from "@qodinger/knot-database";
 import * as crypto from "crypto";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { escapeRegExp } from "../../middleware/auth.middleware.js";
 import { getPlanLimits, checkPlanLimit } from "@qodinger/knot-types";
 import { safeCompare } from "../../utils/crypto.js";
+import { apiError } from "../../utils/api-error.js";
+import { RedisClient } from "../../infra/redis-client.js";
 
 const DEFAULT_EVENTS = [
   "invoice.confirmed",
@@ -27,40 +34,47 @@ export const WebhookEndpointController = {
     }).sort({ createdAt: -1 });
 
     return {
-      endpoints: endpoints.map((e: any) => ({
-        id: e._id.toString(),
-        endpointId: e.endpointId,
+      object: "list",
+      data: endpoints.map((e: any) => ({
+        object: "endpoint",
+        id: e.endpointId,
         url: e.url,
         description: e.description,
         events: e.events,
-        eventMode: e.eventMode,
-        isActive: e.isActive,
-        lastSuccessAt: e.lastSuccessAt,
-        lastFailureAt: e.lastFailureAt,
-        consecutiveFailures: e.consecutiveFailures,
-        disabledAt: e.disabledAt,
-        createdAt: e.createdAt,
+        event_mode: e.eventMode,
+        is_active: e.isActive,
+        last_success_at: e.lastSuccessAt,
+        last_failure_at: e.lastFailureAt,
+        consecutive_failures: e.consecutiveFailures,
+        disabled_at: e.disabledAt,
+        created_at: e.createdAt,
       })),
       limits: getPlanLimits(merchant.plan),
     };
   },
 
-  createEndpoint: async (
-    request: FastifyRequest<{
-      Body: {
-        url: string;
-        description?: string;
-        events?: string[];
-        eventMode?: "all" | "filtered";
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  createEndpoint: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, user } = ctx;
-    const { url, description, events, eventMode } = (request as any).body;
+    const { url, description, events, eventMode } = request.body;
+
+    // Idempotency: a retry with the same key must return the same endpoint secret.
+    // Without this, each retry would create a duplicate endpoint with a new secret.
+    const idempotencyKey = request.headers["idempotency-key"] as
+      | string
+      | undefined;
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:webhook_endpoint:${merchant._id}:${idempotencyKey}`;
+      const cached = await RedisClient.get<object>(cacheKey);
+      if (cached) {
+        return reply
+          .code(201)
+          .header("Idempotent-Replayed", "true")
+          .send(cached);
+      }
+    }
 
     const limits = getPlanLimits(merchant.plan);
     const currentCount = await WebhookEndpoint.countDocuments({
@@ -73,12 +87,12 @@ export const WebhookEndpointController = {
       currentCount,
     );
     if (!limitCheck.allowed) {
-      return reply.code(403).send({
-        error: `Webhook endpoint limit reached for ${merchant.plan} plan (${limits.maxWebhookEndpoints} max). Upgrade to add more.`,
-        code: "LIMIT_EXCEEDED",
-        limit: limits.maxWebhookEndpoints,
-        current: currentCount,
-      });
+      return apiError(
+        reply,
+        403,
+        "plan_limit_reached",
+        `Webhook endpoint limit reached for the ${merchant.plan} plan (${limits.maxWebhookEndpoints} max). Upgrade to add more.`,
+      );
     }
 
     const secret = `knot_wh_${crypto.randomBytes(24).toString("hex")}`;
@@ -98,7 +112,7 @@ export const WebhookEndpointController = {
     await AuditLogger.settings(
       user._id.toString(),
       "webhook_updated",
-      request as any,
+      request,
       {
         merchantId: merchant.merchantId,
         action: "endpoint_created",
@@ -107,40 +121,34 @@ export const WebhookEndpointController = {
       },
     );
 
-    return {
-      success: true,
-      message: "Webhook endpoint created successfully",
-      endpoint: {
-        id: endpoint._id.toString(),
-        endpointId: endpoint.endpointId,
-        url: endpoint.url,
-        secret,
-        description: endpoint.description,
-        events: endpoint.events,
-        eventMode: endpoint.eventMode,
-      },
+    const responseBody = {
+      object: "endpoint",
+      id: endpoint.endpointId,
+      url: endpoint.url,
+      secret,
+      description: endpoint.description,
+      events: endpoint.events,
+      event_mode: endpoint.eventMode,
+      is_active: endpoint.isActive,
+      created_at: endpoint.createdAt,
       warning:
         "Store this webhook secret securely. It will not be shown again.",
     };
+
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:webhook_endpoint:${merchant._id}:${idempotencyKey}`;
+      RedisClient.set(cacheKey, responseBody, 86400).catch(() => {});
+    }
+
+    return reply.code(201).send(responseBody);
   },
 
-  updateEndpoint: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; endpointId: string };
-      Body: {
-        url?: string;
-        description?: string;
-        events?: string[];
-        eventMode?: "all" | "filtered";
-      };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  updateEndpoint: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
-    const { url, description, events, eventMode } = (request as any).body;
+    const { url, description, events, eventMode } = request.body;
 
     const endpoint = await WebhookEndpoint.findOne({
       _id: request.params.endpointId,
@@ -148,7 +156,12 @@ export const WebhookEndpointController = {
     });
 
     if (!endpoint) {
-      return reply.code(404).send({ error: "Webhook endpoint not found" });
+      return apiError(
+        reply,
+        404,
+        "webhook_endpoint_not_found",
+        "No webhook endpoint found with that ID.",
+      );
     }
 
     if (url) endpoint.url = url;
@@ -163,13 +176,8 @@ export const WebhookEndpointController = {
     };
   },
 
-  deleteEndpoint: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; endpointId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  deleteEndpoint: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, user } = ctx;
@@ -180,7 +188,12 @@ export const WebhookEndpointController = {
     });
 
     if (!endpoint) {
-      return reply.code(404).send({ error: "Webhook endpoint not found" });
+      return apiError(
+        reply,
+        404,
+        "webhook_endpoint_not_found",
+        "No webhook endpoint found with that ID.",
+      );
     }
 
     await WebhookEndpoint.deleteOne({ _id: endpoint._id });
@@ -188,7 +201,7 @@ export const WebhookEndpointController = {
     await AuditLogger.settings(
       user._id.toString(),
       "webhook_updated",
-      request as any,
+      request,
       {
         merchantId: merchant.merchantId,
         action: "endpoint_deleted",
@@ -203,13 +216,8 @@ export const WebhookEndpointController = {
     };
   },
 
-  testEndpoint: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; endpointId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  testEndpoint: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
@@ -220,7 +228,12 @@ export const WebhookEndpointController = {
     });
 
     if (!endpoint) {
-      return reply.code(404).send({ error: "Webhook endpoint not found" });
+      return apiError(
+        reply,
+        404,
+        "webhook_endpoint_not_found",
+        "No webhook endpoint found with that ID.",
+      );
     }
 
     const testPayload = {
@@ -264,12 +277,14 @@ export const WebhookEndpointController = {
           },
         });
 
-        return reply.code(400).send({
-          error: `Endpoint returned ${response.status}`,
-          statusCode: response.status,
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          `Endpoint returned an unsuccessful status code: ${response.status}.`,
+        );
       }
-    } catch (error) {
+    } catch {
       await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
         $set: {
           lastFailureAt: new Date(),
@@ -277,19 +292,17 @@ export const WebhookEndpointController = {
         },
       });
 
-      return reply.code(400).send({
-        error: `Failed to send test webhook: ${(error as Error).message}`,
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Failed to deliver the test webhook. Check that the endpoint URL is reachable.",
+      );
     }
   },
 
-  getEndpointSecret: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; endpointId: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  getEndpointSecret: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
@@ -300,7 +313,12 @@ export const WebhookEndpointController = {
     });
 
     if (!endpoint) {
-      return reply.code(404).send({ error: "Webhook endpoint not found" });
+      return apiError(
+        reply,
+        404,
+        "webhook_endpoint_not_found",
+        "No webhook endpoint found with that ID.",
+      );
     }
 
     return {
@@ -325,7 +343,7 @@ async function resolveAuth(
     !oauthId ||
     !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
   ) {
-    reply.code(401).send({ error: "Unauthorized" });
+    apiError(reply, 401, "unauthorized", "Authentication required.");
     return null;
   }
 
@@ -333,24 +351,55 @@ async function resolveAuth(
     oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
   });
   if (!user) {
-    reply.code(404).send({ error: "User not found" });
+    apiError(reply, 404, "user_not_found", "No user found for this identity.");
     return null;
   }
 
   const merchantId = request.params.merchantId || request.merchant?.merchantId;
   if (!merchantId) {
-    reply.code(400).send({ error: "Merchant ID required" });
+    apiError(
+      reply,
+      400,
+      "invalid_request",
+      "Merchant ID is required.",
+      "merchant_id",
+    );
     return null;
   }
 
   const merchant = await Merchant.findOne({ merchantId });
   if (!merchant) {
-    reply.code(404).send({ error: "Merchant not found" });
+    apiError(
+      reply,
+      404,
+      "merchant_not_found",
+      "No merchant found with that ID.",
+    );
     return null;
   }
 
   if (!merchant.isActive) {
-    reply.code(403).send({ error: "Merchant account suspended" });
+    apiError(
+      reply,
+      403,
+      "merchant_suspended",
+      "This merchant account is suspended.",
+    );
+    return null;
+  }
+
+  const membership = await MerchantMember.findOne({
+    merchantId: merchant._id,
+    userId: user._id,
+    accepted: true,
+  });
+  if (!membership) {
+    apiError(
+      reply,
+      403,
+      "forbidden",
+      "You do not have access to this merchant.",
+    );
     return null;
   }
 

@@ -3,13 +3,14 @@ import { PromoCode, User } from "@qodinger/knot-database";
 import * as crypto from "crypto";
 import { NotificationService } from "../../infra/notification-service.js";
 import { safeCompare } from "../../utils/crypto.js";
+import { apiError } from "../../utils/api-error.js";
 
 export const MerchantPromoController = {
   generatePromo: async (request: any, reply: FastifyReply) => {
     // Protect with internal secret
     const secret = request.headers["x-internal-secret"];
     if (!safeCompare(secret as string, process.env.INTERNAL_SECRET || "")) {
-      return reply.code(403).send({ error: "Forbidden" });
+      return apiError(reply, 403, "forbidden", "Access denied.");
     }
 
     const { amountUsd, maxUses, expiresInDays, customCode } = request.body;
@@ -20,7 +21,12 @@ export const MerchantPromoController = {
 
     const existingCode = await PromoCode.findOne({ code });
     if (existingCode) {
-      return reply.code(400).send({ error: "Code already exists" });
+      return apiError(
+        reply,
+        400,
+        "conflict",
+        "A promo code with this value already exists.",
+      );
     }
 
     let expiresAt: Date | undefined;
@@ -47,7 +53,8 @@ export const MerchantPromoController = {
   },
   redeemPromo: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const { code } = request.body;
     const promo = await PromoCode.findOne({
@@ -56,26 +63,42 @@ export const MerchantPromoController = {
     });
 
     if (!promo) {
-      return reply.code(400).send({ error: "Invalid or expired promo code." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Invalid or expired promo code.",
+      );
     }
 
     // Check global limit
     if (promo.uses >= promo.maxUses) {
-      return reply
-        .code(400)
-        .send({ error: "This promo code has reached its usage limit." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This promo code has reached its usage limit.",
+      );
     }
 
     // Check if user already claimed it
     if (merchant.userId && promo.claimedBy.includes(merchant.userId)) {
-      return reply
-        .code(400)
-        .send({ error: "You have already redeemed this promo code." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "You have already redeemed this promo code.",
+      );
     }
 
     // Check expiration
     if (promo.expiresAt && promo.expiresAt < new Date()) {
-      return reply.code(400).send({ error: "This promo code has expired." });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "This promo code has expired.",
+      );
     }
 
     // Everything looks good, update balance and mark as used
@@ -111,6 +134,11 @@ export const MerchantPromoController = {
       });
     }
 
-    return reply.code(400).send({ error: "Failed to resolve user identity." });
+    return apiError(
+      reply,
+      400,
+      "invalid_request",
+      "Failed to resolve user identity.",
+    );
   },
 };

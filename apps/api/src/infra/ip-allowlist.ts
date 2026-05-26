@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify";
 import { Merchant } from "@qodinger/knot-database";
+import { apiError } from "../utils/api-error.js";
 
 /**
  * 🔒 IP Allowlist Middleware
@@ -58,11 +59,12 @@ export async function ipAllowlistMiddleware(
       { merchantId: merchant.merchantId, ip: requestIp },
       "IP address not in allowlist",
     );
-    return reply.code(403).send({
-      error: "Forbidden",
-      message: "Your IP address is not allowed to access this merchant account",
-      yourIp: requestIp,
-    });
+    return apiError(
+      reply,
+      403,
+      "forbidden",
+      "Your IP address is not allowed to access this merchant account.",
+    );
   }
 }
 

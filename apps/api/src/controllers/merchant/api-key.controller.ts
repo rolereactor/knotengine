@@ -1,12 +1,17 @@
-import { FastifyReply, FastifyRequest } from "fastify";
-import { Merchant, ApiKey, User } from "@qodinger/knot-database";
+import { FastifyReply } from "fastify";
+import {
+  Merchant,
+  ApiKey,
+  MerchantMember,
+  User,
+} from "@qodinger/knot-database";
 import * as crypto from "crypto";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { escapeRegExp } from "../../middleware/auth.middleware.js";
 import { getPlanLimits, checkPlanLimit } from "@qodinger/knot-types";
 import { safeCompare } from "../../utils/crypto.js";
-
-type ApiKeyScope = "full_access" | "read_only" | "invoices" | "webhooks";
+import { apiError } from "../../utils/api-error.js";
+import { RedisClient } from "../../infra/redis-client.js";
 
 export const ApiKeyController = {
   listKeys: async (request: any, reply: FastifyReply) => {
@@ -21,32 +26,44 @@ export const ApiKeyController = {
     }).sort({ createdAt: -1 });
 
     return {
-      keys: keys.map((k: any) => ({
-        id: k._id.toString(),
-        keyId: k.keyId,
+      object: "list",
+      data: keys.map((k: any) => ({
+        object: "key",
+        id: k.keyId,
         label: k.label,
         scope: k.scope,
-        lastFour: k.lastFour,
-        lastUsedAt: k.lastUsedAt,
-        lastUsedIp: k.lastUsedIp,
-        requestCount: k.requestCount,
-        createdAt: k.createdAt,
+        last_four: k.lastFour,
+        last_used_at: k.lastUsedAt,
+        last_used_ip: k.lastUsedIp,
+        request_count: k.requestCount,
+        created_at: k.createdAt,
       })),
       limits: getPlanLimits(merchant.plan),
     };
   },
 
-  createKey: async (
-    request: FastifyRequest<{
-      Body: { label: string; scope: ApiKeyScope };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  createKey: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, user } = ctx;
-    const { label, scope } = (request as any).body;
+    const { label, scope } = request.body;
+
+    // Idempotency: a retry with the same key must return the same secret.
+    // Without this, each retry would create a new key and expose a new secret.
+    const idempotencyKey = request.headers["idempotency-key"] as
+      | string
+      | undefined;
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:api_key:${merchant._id}:${idempotencyKey}`;
+      const cached = await RedisClient.get<object>(cacheKey);
+      if (cached) {
+        return reply
+          .code(201)
+          .header("Idempotent-Replayed", "true")
+          .send(cached);
+      }
+    }
 
     const limits = getPlanLimits(merchant.plan);
     const currentCount = await ApiKey.countDocuments({
@@ -60,12 +77,12 @@ export const ApiKeyController = {
       currentCount,
     );
     if (!limitCheck.allowed) {
-      return reply.code(403).send({
-        error: `API key limit reached for ${merchant.plan} plan (${limits.maxApiKeys} max). Upgrade to add more.`,
-        code: "LIMIT_EXCEEDED",
-        limit: limits.maxApiKeys,
-        current: currentCount,
-      });
+      return apiError(
+        reply,
+        403,
+        "plan_limit_reached",
+        `API key limit reached for the ${merchant.plan} plan (${limits.maxApiKeys} max). Upgrade to add more.`,
+      );
     }
 
     const secretKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
@@ -87,7 +104,7 @@ export const ApiKeyController = {
     await AuditLogger.security(
       user._id.toString(),
       "api_key_generated",
-      request as any,
+      request,
       {
         merchantId: merchant.merchantId,
         keyId,
@@ -96,33 +113,31 @@ export const ApiKeyController = {
       },
     );
 
-    return {
-      success: true,
-      message: "API key created successfully",
-      key: {
-        id: apiKey._id.toString(),
-        keyId: apiKey.keyId,
-        secretKey,
-        label: apiKey.label,
-        scope: apiKey.scope,
-        lastFour: apiKey.lastFour,
-      },
+    const responseBody = {
+      object: "key",
+      id: apiKey.keyId,
+      secret: secretKey,
+      label: apiKey.label,
+      scope: apiKey.scope,
+      last_four: apiKey.lastFour,
+      created_at: apiKey.createdAt,
       warning: "Store this secret key securely. It will not be shown again.",
     };
+
+    if (idempotencyKey) {
+      const cacheKey = `idempotency:api_key:${merchant._id}:${idempotencyKey}`;
+      RedisClient.set(cacheKey, responseBody, 86400).catch(() => {});
+    }
+
+    return reply.code(201).send(responseBody);
   },
 
-  revokeKey: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; keyId: string };
-      Body: { reason?: string };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  revokeKey: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant, user } = ctx;
-    const reason = (request as any).body?.reason;
+    const reason = request.body?.reason;
 
     const apiKey = await ApiKey.findOne({
       _id: request.params.keyId,
@@ -131,7 +146,12 @@ export const ApiKeyController = {
     });
 
     if (!apiKey) {
-      return reply.code(404).send({ error: "API key not found" });
+      return apiError(
+        reply,
+        404,
+        "api_key_not_found",
+        "No active API key found with that ID.",
+      );
     }
 
     apiKey.isActive = false;
@@ -142,7 +162,7 @@ export const ApiKeyController = {
     await AuditLogger.security(
       user._id.toString(),
       "api_key_revoked",
-      request as any,
+      request,
       {
         merchantId: merchant.merchantId,
         keyId: apiKey.keyId,
@@ -157,18 +177,12 @@ export const ApiKeyController = {
     };
   },
 
-  updateKey: async (
-    request: FastifyRequest<{
-      Params: { merchantId: string; keyId: string };
-      Body: { label?: string; scope?: ApiKeyScope };
-    }>,
-    reply: FastifyReply,
-  ) => {
-    const ctx = await resolveAuth(request as any, reply);
+  updateKey: async (request: any, reply: FastifyReply) => {
+    const ctx = await resolveAuth(request, reply);
     if (!ctx) return;
 
     const { merchant } = ctx;
-    const { label, scope } = (request as any).body;
+    const { label, scope } = request.body;
 
     const apiKey = await ApiKey.findOne({
       _id: request.params.keyId,
@@ -177,7 +191,12 @@ export const ApiKeyController = {
     });
 
     if (!apiKey) {
-      return reply.code(404).send({ error: "API key not found" });
+      return apiError(
+        reply,
+        404,
+        "api_key_not_found",
+        "No active API key found with that ID.",
+      );
     }
 
     if (label) apiKey.label = label;
@@ -185,15 +204,12 @@ export const ApiKeyController = {
     await apiKey.save();
 
     return {
-      success: true,
-      message: "API key updated successfully",
-      key: {
-        id: apiKey._id.toString(),
-        keyId: apiKey.keyId,
-        label: apiKey.label,
-        scope: apiKey.scope,
-        lastFour: apiKey.lastFour,
-      },
+      object: "key",
+      id: apiKey.keyId,
+      label: apiKey.label,
+      scope: apiKey.scope,
+      last_four: apiKey.lastFour,
+      created_at: apiKey.createdAt,
     };
   },
 };
@@ -209,7 +225,7 @@ async function resolveAuth(
     !oauthId ||
     !safeCompare(internalSecret, process.env.INTERNAL_SECRET || "")
   ) {
-    reply.code(401).send({ error: "Unauthorized" });
+    apiError(reply, 401, "unauthorized", "Authentication required.");
     return null;
   }
 
@@ -217,24 +233,55 @@ async function resolveAuth(
     oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
   });
   if (!user) {
-    reply.code(404).send({ error: "User not found" });
+    apiError(reply, 404, "user_not_found", "No user found for this identity.");
     return null;
   }
 
   const merchantId = request.params.merchantId || request.merchant?.merchantId;
   if (!merchantId) {
-    reply.code(400).send({ error: "Merchant ID required" });
+    apiError(
+      reply,
+      400,
+      "invalid_request",
+      "Merchant ID is required.",
+      "merchant_id",
+    );
     return null;
   }
 
   const merchant = await Merchant.findOne({ merchantId });
   if (!merchant) {
-    reply.code(404).send({ error: "Merchant not found" });
+    apiError(
+      reply,
+      404,
+      "merchant_not_found",
+      "No merchant found with that ID.",
+    );
     return null;
   }
 
   if (!merchant.isActive) {
-    reply.code(403).send({ error: "Merchant account suspended" });
+    apiError(
+      reply,
+      403,
+      "merchant_suspended",
+      "This merchant account is suspended.",
+    );
+    return null;
+  }
+
+  const membership = await MerchantMember.findOne({
+    merchantId: merchant._id,
+    userId: user._id,
+    accepted: true,
+  });
+  if (!membership) {
+    apiError(
+      reply,
+      403,
+      "forbidden",
+      "You do not have access to this merchant.",
+    );
     return null;
   }
 

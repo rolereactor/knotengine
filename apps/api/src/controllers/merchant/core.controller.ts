@@ -14,6 +14,7 @@ import { FastifyRequest } from "fastify";
 import * as ecc from "tiny-secp256k1";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { safeCompare } from "../../utils/crypto.js";
+import { apiError } from "../../utils/api-error.js";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -74,9 +75,7 @@ export const MerchantCoreController = {
     if (oauthId) {
       const secret = request.headers["x-internal-secret"];
       if (!safeCompare(secret as string, process.env.INTERNAL_SECRET || "")) {
-        return reply
-          .code(403)
-          .send({ error: "Forbidden: Internal Secret Required" });
+        return apiError(reply, 403, "forbidden", "Internal secret required.");
       }
     }
 
@@ -185,19 +184,20 @@ export const MerchantCoreController = {
     }
 
     return reply.code(201).send({
+      object: "merchant",
       id: newMerchant.merchantId,
-      merchantId: newMerchant.merchantId,
       name: newMerchant.name,
       email: newMerchant.email,
-      logoUrl: newMerchant.logoUrl,
-      webhookSecret,
-      apiKey: null,
+      logo_url: newMerchant.logoUrl,
+      webhook_secret: webhookSecret,
+      api_key: null,
+      created_at: newMerchant.createdAt,
     });
   },
   listMerchants: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
     if (!merchant?.oauthId)
-      return reply.code(401).send({ error: "Auth required" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     const { oauthId } = merchant;
 
     // Clean base oauthId for lookup (e.g. google:123:456 -> google:123)
@@ -217,23 +217,25 @@ export const MerchantCoreController = {
     const userMap = new Map<string, (typeof users)[number]>();
     for (const u of users) userMap.set(u._id.toString(), u);
 
-    return merchants.map((merchant) => {
+    const data = merchants.map((merchant) => {
       const currentUser = merchant.userId
         ? (userMap.get(merchant.userId.toString()) ?? null)
         : null;
 
       return {
+        object: "merchant",
         id: merchant.merchantId,
-        merchantId: merchant.merchantId,
         name: merchant.name,
         email: merchant.email,
-        logoUrl: merchant.logoUrl,
-        twoFactorEnabled: currentUser?.twoFactorEnabled || false,
-        referralCode: currentUser?.referralCode,
-        referralEarningsUsd: currentUser?.referralEarningsUsd || 0,
-        creditBalance: currentUser?.creditBalance || 0,
+        logo_url: merchant.logoUrl,
+        two_factor_enabled: currentUser?.twoFactorEnabled || false,
+        referral_code: currentUser?.referralCode,
+        referral_earnings_usd: currentUser?.referralEarningsUsd || 0,
+        credit_balance: currentUser?.creditBalance || 0,
+        created_at: merchant.createdAt,
       };
     });
+    return { object: "list", data };
   },
   getMerchantByOauth: async (
     request: FastifyRequest<{ Params: { oauthId: string } }>,
@@ -242,7 +244,7 @@ export const MerchantCoreController = {
     // Protect with internal secret
     const secret = request.headers["x-internal-secret"];
     if (!safeCompare(secret as string, process.env.INTERNAL_SECRET || "")) {
-      return reply.code(403).send({ error: "Forbidden" });
+      return apiError(reply, 403, "forbidden", "Internal secret required.");
     }
 
     const { oauthId } = request.params;
@@ -256,7 +258,12 @@ export const MerchantCoreController = {
     });
 
     if (merchants.length === 0) {
-      return reply.code(404).send({ error: "Not found" });
+      return apiError(
+        reply,
+        404,
+        "merchant_not_found",
+        "No merchants found for this OAuth identity.",
+      );
     }
 
     // Phase 1: Ensure every merchant has a public merchantId and API key
@@ -319,29 +326,31 @@ export const MerchantCoreController = {
     }
 
     // Phase 4: Build results
-    return merchants.map((merchant) => {
+    const data = merchants.map((merchant) => {
       const currentUser = merchant.userId
         ? (userMap.get(merchant.userId.toString()) ?? null)
         : null;
 
       return {
+        object: "merchant",
         id: merchant.merchantId,
-        merchantId: merchant.merchantId,
         name: merchant.name,
         email: merchant.email,
-        logoUrl: merchant.logoUrl,
-        apiKey: null,
-        hasApiKey: true,
-        twoFactorEnabled: currentUser?.twoFactorEnabled || false,
-        referralCode: currentUser?.referralCode,
-        referralEarningsUsd: currentUser?.referralEarningsUsd || 0,
-        creditBalance: currentUser?.creditBalance || 0,
+        logo_url: merchant.logoUrl,
+        has_api_key: true,
+        two_factor_enabled: currentUser?.twoFactorEnabled || false,
+        referral_code: currentUser?.referralCode,
+        referral_earnings_usd: currentUser?.referralEarningsUsd || 0,
+        credit_balance: currentUser?.creditBalance || 0,
+        created_at: merchant.createdAt,
       };
     });
+    return { object: "list", data };
   },
   getProfile: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const sanitizeXpub = (val?: string) =>
       val && (val.startsWith("mid_") || val.startsWith("knot_")) ? null : val;
@@ -378,43 +387,44 @@ export const MerchantCoreController = {
     const user = merchant.userId ? await User.findById(merchant.userId) : null;
 
     return {
+      object: "merchant",
       id: merchant.merchantId,
-      merchantId: merchant.merchantId,
       name: merchant.name,
-      btcXpub: merchant.btcXpub,
-      btcXpubTestnet: finalBtcXpubTestnet,
-      ethAddress: merchant.ethAddress,
-      ethAddressTestnet: finalEthAddressTestnet,
-      webhookUrl: merchant.webhookUrl,
-      webhookSecret: merchant.webhookSecret,
-      logoUrl: merchant.logoUrl,
-      returnUrl: merchant.returnUrl,
+      btc_xpub: merchant.btcXpub,
+      btc_xpub_testnet: finalBtcXpubTestnet,
+      eth_address: merchant.ethAddress,
+      eth_address_testnet: finalEthAddressTestnet,
+      webhook_url: merchant.webhookUrl,
+      webhook_secret: merchant.webhookSecret,
+      logo_url: merchant.logoUrl,
+      return_url: merchant.returnUrl,
       theme: merchant.theme || "system",
-      brandColor: merchant.brandColor || "#ffffff",
-      brandingEnabled: merchant.brandingEnabled ?? true,
-      removeBranding: merchant.removeBranding ?? false,
-      brandingAlignment: merchant.brandingAlignment ?? "left",
-      feeResponsibility: merchant.feeResponsibility || "merchant",
-      invoiceExpirationMinutes: merchant.invoiceExpirationMinutes || 60,
-      underpaymentTolerancePercentage:
+      brand_color: merchant.brandColor || "#ffffff",
+      branding_enabled: merchant.brandingEnabled ?? true,
+      remove_branding: merchant.removeBranding ?? false,
+      branding_alignment: merchant.brandingAlignment ?? "left",
+      fee_responsibility: merchant.feeResponsibility || "merchant",
+      invoice_expiration_minutes: merchant.invoiceExpirationMinutes || 60,
+      underpayment_tolerance_percentage:
         merchant.underpaymentTolerancePercentage ?? 1,
-      bip21Enabled: merchant.bip21Enabled ?? true,
-      enabledCurrencies: merchant.enabledCurrencies || [],
-      webhookEvents: merchant.webhookEvents || [
+      bip21_enabled: merchant.bip21Enabled ?? true,
+      enabled_currencies: merchant.enabledCurrencies || [],
+      webhook_events: merchant.webhookEvents || [
         "invoice.confirmed",
         "invoice.mempool_detected",
         "invoice.failed",
       ],
-      confirmationPolicy: merchant.confirmationPolicy,
-      twoFactorEnabled: user?.twoFactorEnabled || false,
-      feesAccrued: merchant.feesAccrued,
-      creditBalance: user?.creditBalance ?? 0,
-      createdAt: merchant.createdAt,
+      confirmation_policy: merchant.confirmationPolicy,
+      two_factor_enabled: user?.twoFactorEnabled || false,
+      fees_accrued: merchant.feesAccrued,
+      credit_balance: user?.creditBalance ?? 0,
+      created_at: merchant.createdAt,
     };
   },
   deleteProfile: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const user =
       request.user || (await User.findOne({ oauthId: merchant.oauthId }));
@@ -449,7 +459,8 @@ export const MerchantCoreController = {
   },
   updateProfile: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const updates = request.body;
 
@@ -458,10 +469,13 @@ export const MerchantCoreController = {
 
     // Only Professional and Enterprise can enable 'removeBranding'
     if (updates.removeBranding === true && currentPlan === "starter") {
-      return reply.code(403).send({
-        error:
-          "Updating 'removeBranding' to true requires the Professional or Enterprise plan.",
-      });
+      return apiError(
+        reply,
+        403,
+        "plan_limit_reached",
+        "The 'remove_branding' feature requires the Professional or Enterprise plan.",
+        "remove_branding",
+      );
     }
 
     console.log(
@@ -482,7 +496,12 @@ export const MerchantCoreController = {
     const updated = await Merchant.findById(merchant._id);
 
     if (!updated) {
-      return reply.code(500).send({ error: "Failed to update merchant" });
+      return apiError(
+        reply,
+        500,
+        "internal_error",
+        "Failed to update merchant.",
+      );
     }
 
     // Manually add brandingAlignment from updates if it was set
@@ -517,33 +536,34 @@ export const MerchantCoreController = {
     );
 
     return {
+      object: "merchant",
       id: updated.merchantId,
-      merchantId: updated.merchantId,
       name: updated.name,
-      btcXpub: updated.btcXpub,
-      btcXpubTestnet: updated.btcXpubTestnet,
-      ethAddress: updated.ethAddress,
-      ethAddressTestnet: updated.ethAddressTestnet,
-      webhookUrl: updated.webhookUrl,
-      webhookSecret: updated.webhookSecret,
-      feeResponsibility: updated.feeResponsibility,
-      invoiceExpirationMinutes: updated.invoiceExpirationMinutes,
-      underpaymentTolerancePercentage: updated.underpaymentTolerancePercentage,
-      bip21Enabled: updated.bip21Enabled,
-      enabledCurrencies: updated.enabledCurrencies,
-      logoUrl: updated.logoUrl,
-      returnUrl: updated.returnUrl,
+      btc_xpub: updated.btcXpub,
+      btc_xpub_testnet: updated.btcXpubTestnet,
+      eth_address: updated.ethAddress,
+      eth_address_testnet: updated.ethAddressTestnet,
+      webhook_url: updated.webhookUrl,
+      webhook_secret: updated.webhookSecret,
+      fee_responsibility: updated.feeResponsibility,
+      invoice_expiration_minutes: updated.invoiceExpirationMinutes,
+      underpayment_tolerance_percentage:
+        updated.underpaymentTolerancePercentage,
+      bip21_enabled: updated.bip21Enabled,
+      enabled_currencies: updated.enabledCurrencies,
+      logo_url: updated.logoUrl,
+      return_url: updated.returnUrl,
       theme: updated.theme || "system",
-      brandColor: updated.brandColor || "#ffffff",
-      brandingEnabled: updated.brandingEnabled ?? true,
-      removeBranding: updated.removeBranding ?? false,
-      brandingAlignment: updated.brandingAlignment || "left",
-      webhookEvents: updated.webhookEvents || [
+      brand_color: updated.brandColor || "#ffffff",
+      branding_enabled: updated.brandingEnabled ?? true,
+      remove_branding: updated.removeBranding ?? false,
+      branding_alignment: updated.brandingAlignment || "left",
+      webhook_events: updated.webhookEvents || [
         "invoice.confirmed",
         "invoice.mempool_detected",
         "invoice.failed",
       ],
-      confirmationPolicy: updated.confirmationPolicy,
+      confirmation_policy: updated.confirmationPolicy,
     };
   },
 };

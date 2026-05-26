@@ -19,6 +19,7 @@ import {
 } from "@qodinger/knot-types";
 import * as crypto from "crypto";
 import { safeCompare } from "../utils/crypto.js";
+import { apiError } from "../utils/api-error.js";
 import { MerchantBillingController } from "../controllers/merchant/billing.controller.js";
 import { MerchantCoreController } from "../controllers/merchant/core.controller.js";
 import { MerchantNotificationController } from "../controllers/merchant/notification.controller.js";
@@ -81,15 +82,18 @@ export async function merchantRoutes(app: FastifyInstance) {
     if (foundKey) {
       const merchant = foundKey.merchantId as any;
       if (!merchant.isActive || merchant.isDeleted) {
-        return reply
-          .code(403)
-          .send({ error: "Merchant account suspended or deleted" });
+        return apiError(
+          reply,
+          403,
+          "merchant_suspended",
+          "This merchant account is suspended or deleted.",
+        );
       }
       request.merchant = merchant;
       return;
     }
 
-    return reply.code(401).send({ error: "Invalid API Key" });
+    return apiError(reply, 401, "invalid_api_key", "Invalid API key.");
   };
 
   // ──────────────────────────────────────────────
@@ -106,7 +110,7 @@ export async function merchantRoutes(app: FastifyInstance) {
       !secret ||
       !safeCompare(secret, process.env.INTERNAL_SECRET || "")
     ) {
-      return reply.code(401).send({ error: "Unauthorized" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     }
 
     const query: Record<string, unknown> = {
@@ -129,7 +133,12 @@ export async function merchantRoutes(app: FastifyInstance) {
     const merchant = await Merchant.findOne(query);
 
     if (!merchant) {
-      return reply.code(401).send({ error: "Merchant not found" });
+      return apiError(
+        reply,
+        401,
+        "merchant_not_found",
+        "No merchant found for this identity.",
+      );
     }
 
     // Lazy Migration: Sync to User
@@ -162,7 +171,7 @@ export async function merchantRoutes(app: FastifyInstance) {
       try {
         await authHook(request, reply);
       } catch {
-        return reply.code(401).send({ error: "Invalid API Key" });
+        return apiError(reply, 401, "invalid_api_key", "Invalid API key.");
       }
     } else {
       await oauthHook(request, reply);
@@ -213,10 +222,12 @@ export async function merchantRoutes(app: FastifyInstance) {
         }
         entry.count++;
         if (entry.count > CREATE_MERCHANT_MAX) {
-          return reply.code(429).send({
-            error: "Too many merchant creation attempts",
-            message: `Please wait ${Math.ceil((entry.resetAt - now) / 60000)} minutes before trying again.`,
-          });
+          return apiError(
+            reply,
+            429,
+            "rate_limit_exceeded",
+            `Too many merchant creation attempts. Please wait ${Math.ceil((entry.resetAt - now) / 60000)} minutes before trying again.`,
+          );
         }
       },
     },
@@ -347,7 +358,8 @@ export async function merchantRoutes(app: FastifyInstance) {
     { preHandler: requireAuth },
     async (request: any, reply: FastifyReply) => {
       const merchant = request.merchant;
-      if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+      if (!merchant)
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
 
       const existingKeys = await ApiKey.countDocuments({
         merchantId: merchant._id,
@@ -355,10 +367,12 @@ export async function merchantRoutes(app: FastifyInstance) {
       });
 
       if (existingKeys > 0) {
-        return reply.code(400).send({
-          error:
-            "API keys already exist. Use the Developers page to manage keys.",
-        });
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "API keys already exist. Use the Developers page to manage keys.",
+        );
       }
 
       return ApiKeyController.createKey(
@@ -381,7 +395,8 @@ export async function merchantRoutes(app: FastifyInstance) {
     { preHandler: requireAuth },
     async (request: any, reply: FastifyReply) => {
       const merchant = request.merchant;
-      if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+      if (!merchant)
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
 
       return ApiKeyController.createKey(
         {
@@ -411,6 +426,9 @@ export async function merchantRoutes(app: FastifyInstance) {
     {
       preHandler: requireAuth,
       schema: {
+        headers: z
+          .object({ "idempotency-key": z.string().max(255).optional() })
+          .passthrough(),
         body: z.object({
           plan: z.enum(["starter", "professional", "enterprise"]),
         }),
@@ -617,7 +635,7 @@ export async function merchantRoutes(app: FastifyInstance) {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const merchant = request.merchant;
       if (!merchant) {
-        return reply.code(401).send({ error: "Unauthorized" });
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
       }
       const query = request.query as {
         page: number;
@@ -671,7 +689,7 @@ export async function merchantRoutes(app: FastifyInstance) {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const merchant = request.merchant;
       if (!merchant) {
-        return reply.code(401).send({ error: "Unauthorized" });
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
       }
       const params = request.params as { id: string };
 
@@ -681,7 +699,12 @@ export async function merchantRoutes(app: FastifyInstance) {
       }).lean();
 
       if (!delivery) {
-        return reply.code(404).send({ error: "Delivery not found" });
+        return apiError(
+          reply,
+          404,
+          "not_found",
+          "No webhook delivery found with that ID.",
+        );
       }
 
       return reply.send(delivery);
@@ -697,7 +720,7 @@ export async function merchantRoutes(app: FastifyInstance) {
     async (request: FastifyRequest, reply: FastifyReply) => {
       const merchant = request.merchant;
       if (!merchant) {
-        return reply.code(401).send({ error: "Unauthorized" });
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
       }
 
       const [total, success, failed, pending] = await Promise.all([
@@ -735,6 +758,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   // GET /v1/merchants/:merchantId/team
   server.get(
     "/v1/merchants/:merchantId/team",
+    { preHandler: requireAuth },
     MerchantTeamController.getMembers,
   );
 
@@ -742,7 +766,11 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/:merchantId/team/invite",
     {
+      preHandler: requireAuth,
       schema: {
+        headers: z
+          .object({ "idempotency-key": z.string().max(255).optional() })
+          .passthrough(),
         body: z.object({
           email: z
             .string()
@@ -765,6 +793,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.patch(
     "/v1/merchants/:merchantId/team/:memberId/role",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           role: z.enum(["admin", "developer", "viewer", "billing"]),
@@ -778,6 +807,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   // DELETE /v1/merchants/:merchantId/team/:memberId
   server.delete(
     "/v1/merchants/:merchantId/team/:memberId",
+    { preHandler: requireAuth },
     MerchantTeamController.removeMember,
   );
 
@@ -785,6 +815,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/team/accept-invite",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           inviteToken: z.string().min(1),
@@ -798,6 +829,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/:merchantId/team/transfer-ownership",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           newOwnerId: z.string().min(1),
@@ -811,12 +843,14 @@ export async function merchantRoutes(app: FastifyInstance) {
   // POST /v1/merchants/:merchantId/team/leave
   server.post(
     "/v1/merchants/:merchantId/team/leave",
+    { preHandler: requireAuth },
     MerchantTeamController.leaveMerchant,
   );
 
   // GET /v1/merchants/team/default
   server.get(
     "/v1/merchants/team/default",
+    { preHandler: requireAuth },
     MerchantTeamController.getDefaultMerchant,
   );
 
@@ -824,6 +858,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/team/default",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           merchantId: z.string().min(1),
@@ -841,6 +876,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/:merchantId/suspend",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           reason: z.enum([
@@ -860,12 +896,14 @@ export async function merchantRoutes(app: FastifyInstance) {
   // POST /v1/merchants/:merchantId/reinstate
   server.post(
     "/v1/merchants/:merchantId/reinstate",
+    { preHandler: requireAuth },
     MerchantSuspensionController.reinstateMerchant,
   );
 
   // GET /v1/merchants/:merchantId/suspension-status
   server.get(
     "/v1/merchants/:merchantId/suspension-status",
+    { preHandler: requireAuth },
     MerchantSuspensionController.getSuspensionStatus,
   );
 
@@ -874,13 +912,21 @@ export async function merchantRoutes(app: FastifyInstance) {
   // ──────────────────────────────────────────────
 
   // GET /v1/merchants/:merchantId/keys
-  server.get("/v1/merchants/:merchantId/keys", ApiKeyController.listKeys);
+  server.get(
+    "/v1/merchants/:merchantId/keys",
+    { preHandler: requireAuth },
+    ApiKeyController.listKeys,
+  );
 
   // POST /v1/merchants/:merchantId/keys
   server.post(
     "/v1/merchants/:merchantId/keys",
     {
+      preHandler: requireAuth,
       schema: {
+        headers: z
+          .object({ "idempotency-key": z.string().max(255).optional() })
+          .passthrough(),
         body: z.object({
           label: z.string().max(MAX_TEXT_LENGTH).optional(),
           scope: z
@@ -896,6 +942,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.patch(
     "/v1/merchants/:merchantId/keys/:keyId",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           label: z.string().max(MAX_TEXT_LENGTH).optional(),
@@ -912,6 +959,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/:merchantId/keys/:keyId/revoke",
     {
+      preHandler: requireAuth,
       schema: {
         body: z
           .object({
@@ -930,6 +978,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   // GET /v1/merchants/:merchantId/webhooks/endpoints
   server.get(
     "/v1/merchants/:merchantId/webhooks/endpoints",
+    { preHandler: requireAuth },
     WebhookEndpointController.listEndpoints,
   );
 
@@ -937,7 +986,11 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/:merchantId/webhooks/endpoints",
     {
+      preHandler: requireAuth,
       schema: {
+        headers: z
+          .object({ "idempotency-key": z.string().max(255).optional() })
+          .passthrough(),
         body: z.object({
           url: z.string().url().max(MAX_URL_LENGTH),
           description: z.string().max(MAX_TEXT_LENGTH).optional(),
@@ -953,6 +1006,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.patch(
     "/v1/merchants/:merchantId/webhooks/endpoints/:endpointId",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           url: z.string().url().max(MAX_URL_LENGTH).optional(),
@@ -968,18 +1022,21 @@ export async function merchantRoutes(app: FastifyInstance) {
   // DELETE /v1/merchants/:merchantId/webhooks/endpoints/:endpointId
   server.delete(
     "/v1/merchants/:merchantId/webhooks/endpoints/:endpointId",
+    { preHandler: requireAuth },
     WebhookEndpointController.deleteEndpoint,
   );
 
   // POST /v1/merchants/:merchantId/webhooks/endpoints/:endpointId/test
   server.post(
     "/v1/merchants/:merchantId/webhooks/endpoints/:endpointId/test",
+    { preHandler: requireAuth },
     WebhookEndpointController.testEndpoint,
   );
 
   // GET /v1/merchants/:merchantId/webhooks/endpoints/:endpointId/secret
   server.get(
     "/v1/merchants/:merchantId/webhooks/endpoints/:endpointId/secret",
+    { preHandler: requireAuth },
     WebhookEndpointController.getEndpointSecret,
   );
 
@@ -990,18 +1047,21 @@ export async function merchantRoutes(app: FastifyInstance) {
   // POST /v1/merchants/:merchantId/delete
   server.post(
     "/v1/merchants/:merchantId/delete",
+    { preHandler: requireAuth },
     MerchantSoftDeleteController.softDelete,
   );
 
   // POST /v1/merchants/:merchantId/restore
   server.post(
     "/v1/merchants/:merchantId/restore",
+    { preHandler: requireAuth },
     MerchantSoftDeleteController.restore,
   );
 
   // GET /v1/merchants/:merchantId/delete-status
   server.get(
     "/v1/merchants/:merchantId/delete-status",
+    { preHandler: requireAuth },
     MerchantSoftDeleteController.getDeletedStatus,
   );
 }

@@ -1,6 +1,7 @@
 import { v2 as cloudinary } from "cloudinary";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { safeCompare } from "../utils/crypto.js";
+import { apiError } from "../utils/api-error.js";
 
 export const UploadController = {
   oauthHook: async (request: FastifyRequest, reply: FastifyReply) => {
@@ -8,7 +9,7 @@ export const UploadController = {
     const secret = request.headers["x-internal-secret"] as string;
 
     if (!oauthId || !safeCompare(secret, process.env.INTERNAL_SECRET || "")) {
-      return reply.code(401).send({ error: "Unauthorized" });
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
     }
   },
 
@@ -28,9 +29,12 @@ export const UploadController = {
     });
 
     if (!process.env.CLOUDINARY_API_SECRET) {
-      return reply.code(503).send({
-        error: "Image upload not configured. Please set CLOUDINARY_API_SECRET.",
-      });
+      return apiError(
+        reply,
+        503,
+        "internal_error",
+        "Image upload is not configured.",
+      );
     }
 
     try {
@@ -54,11 +58,11 @@ export const UploadController = {
         publicId: result.public_id,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error("[Upload] Cloudinary upload failed:", message);
-      return reply
-        .code(500)
-        .send({ error: "Image upload failed", details: message });
+      console.error(
+        "[Upload] Cloudinary upload failed:",
+        err instanceof Error ? err.message : String(err),
+      );
+      return apiError(reply, 500, "internal_error", "Image upload failed.");
     }
   },
 };

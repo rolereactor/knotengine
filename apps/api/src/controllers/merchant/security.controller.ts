@@ -1,5 +1,6 @@
 import { FastifyReply } from "fastify";
 import { Merchant, ApiKey, WebhookEndpoint } from "@qodinger/knot-database";
+import { apiError } from "../../utils/api-error.js";
 import { BIP32Factory } from "bip32";
 import * as bip39 from "bip39";
 import * as bitcoin from "bitcoinjs-lib";
@@ -33,7 +34,8 @@ function ipToNumber(ip: string): number {
 export const MerchantSecurityController = {
   testWebhook: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(500).send({ error: "Auth failed" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     try {
       await WebhookDispatcher.dispatchTest(merchant._id.toString());
@@ -42,14 +44,19 @@ export const MerchantSecurityController = {
         message: "Test webhook dispatched successfully",
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`❌ Failed to send webhook: ${message}`);
-      return reply.code(400).send({ error: message });
+      console.error(`❌ Failed to send webhook:`, error);
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "Failed to dispatch test webhook. Check that at least one active endpoint is configured.",
+      );
     }
   },
   generateKey: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const existingKeys = await ApiKey.countDocuments({
       merchantId: merchant._id,
@@ -57,10 +64,12 @@ export const MerchantSecurityController = {
     });
 
     if (existingKeys > 0) {
-      return reply.code(400).send({
-        error:
-          "API keys already exist. Use the Developers page to manage keys.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "API keys already exist. Use the Developers page to manage keys.",
+      );
     }
 
     const newApiKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
@@ -89,7 +98,8 @@ export const MerchantSecurityController = {
   },
   rotateKey: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const newApiKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
     const newApiKeyHash = crypto
@@ -124,7 +134,8 @@ export const MerchantSecurityController = {
   },
   rotateWebhookSecret: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const endpoints = await WebhookEndpoint.find({
       merchantId: merchant._id,
@@ -132,9 +143,12 @@ export const MerchantSecurityController = {
     });
 
     if (endpoints.length === 0) {
-      return reply.code(400).send({
-        error: "No webhook endpoints configured. Create one first.",
-      });
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        "No webhook endpoints configured. Create one first.",
+      );
     }
 
     const rotated = [];
@@ -155,7 +169,8 @@ export const MerchantSecurityController = {
   },
   generateTestnetWallet: async (request: any, _reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return _reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(_reply, 401, "unauthorized", "Authentication required.");
 
     // 1. Generate Mnemonic
     const mnemonic = bip39.generateMnemonic();
@@ -191,7 +206,8 @@ export const MerchantSecurityController = {
   },
   getIpAllowlist: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     return {
       enabled: merchant.ipAllowlistEnabled,
@@ -200,7 +216,8 @@ export const MerchantSecurityController = {
   },
   updateIpAllowlist: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const { enabled, allowedIps } = request.body;
 
@@ -227,7 +244,8 @@ export const MerchantSecurityController = {
   },
   validateIp: async (request: any, reply: FastifyReply) => {
     const merchant = request.merchant;
-    if (!merchant) return reply.code(401).send({ error: "Unauthorized" });
+    if (!merchant)
+      return apiError(reply, 401, "unauthorized", "Authentication required.");
 
     const { ip } = request.body;
 
