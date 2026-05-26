@@ -14,6 +14,9 @@ describe("Environment Loading", () => {
     const envPaths = [
       path.resolve(monorepoRoot, ".env.local"),
       path.resolve(monorepoRoot, ".env"),
+      // CI fallback: dummy values so tests can exercise loading logic without
+      // real secrets (only loaded when neither of the above files exists).
+      path.resolve(__dirname, "fixtures/.env.test"),
     ];
 
     for (const envPath of envPaths) {
@@ -67,11 +70,16 @@ describe("Environment Loading", () => {
   });
 
   describe("Monorepo root env files", () => {
-    it(".env.local should exist at monorepo root", () => {
-      const monorepoRoot = path.resolve(__dirname, "../../..");
-      const envLocalPath = path.resolve(monorepoRoot, ".env.local");
-      expect(fs.existsSync(envLocalPath)).toBe(true);
-    });
+    // .env.local is a developer-created secrets file — it intentionally does
+    // not exist in CI. Skip this check there; it is meaningful only locally.
+    it.skipIf(!!process.env.CI)(
+      ".env.local should exist at monorepo root",
+      () => {
+        const monorepoRoot = path.resolve(__dirname, "../../..");
+        const envLocalPath = path.resolve(monorepoRoot, ".env.local");
+        expect(fs.existsSync(envLocalPath)).toBe(true);
+      },
+    );
 
     it(".env.example should exist at monorepo root", () => {
       const monorepoRoot = path.resolve(__dirname, "../../..");

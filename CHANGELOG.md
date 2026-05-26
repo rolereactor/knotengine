@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **[API] Idempotency Keys on All Critical Endpoints** — Idempotency protection has been extended beyond invoice creation to all critical `POST` operations, so retried requests always return the original response rather than creating duplicate records.
 - **[Platform] Self-Hosted Mode** — Introduced a new `SELF_HOSTED` environment flag that unlocks all enterprise features for free when deploying a self-managed instance.
 - **[API] Multiple API Keys & Webhooks** — Merchants can now generate multiple API keys and configure multiple webhook endpoints for different environments.
 - **[Dashboard] Team Management** — Workspace owners can now invite team members to collaborate on their merchant dashboard.
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **[SDK] TypeScript & ESM Support** — Standardized ESM imports and exported additional types (`PLAN_COSTS`) for a better developer experience when integrating the KnotEngine SDK.
 - **[Dashboard] UI Polish** — Refined the layout and styling of marketing and site headers for a cleaner look.
 - **[API] Consistent Error Responses** — All API errors now return a structured shape with machine-readable `type`, `code`, `message`, and `doc_url` fields for more reliable client-side error handling.
+- **[Developer] Strengthened API Error Contract** — A static source scan now runs on every CI build, automatically failing if any route returns a raw `{ error: "..." }` response instead of the structured `apiError()` format. The test suite has grown to 248 tests across 12 test files.
+- **[Developer] Production Config Template** — `.env.production` renamed to `.env.production.example` to make clear it is a reference template, not a file for storing real secrets.
 
 ### Fixed
 
