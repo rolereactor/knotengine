@@ -12,6 +12,8 @@ const logger = childLogger("redis");
 export class RedisClient {
   private static instance: Redis | null = null;
   private static isConnected = false;
+  private static reconnectTimer: NodeJS.Timeout | null = null;
+  private static readonly RECONNECT_INTERVAL_MS = 30_000;
 
   /**
    * Gets or creates the Redis client instance.
@@ -31,13 +33,20 @@ export class RedisClient {
           maxRetriesPerRequest: 3,
           retryStrategy: (times: number) => {
             if (times > 3) {
-              logger.warn("❌ Redis retry limit reached, using fallback");
-              return null; // Stop retrying
+              logger.warn(
+                "❌ Redis retry limit reached, switching to periodic reconnection",
+              );
+              RedisClient.startPeriodicReconnect();
+              return null; // Stop ioredis auto-retry; we handle reconnection ourselves
             }
             return Math.min(times * 50, 2000); // Exponential backoff
           },
+          enableOfflineQueue: true,
+          enableReadyCheck: true,
+          keepAlive: 30000,
           connectTimeout: 5000,
           commandTimeout: 2000,
+          lazyConnect: false,
         });
 
         this.instance.on("connect", () => {
@@ -72,6 +81,58 @@ export class RedisClient {
   }
 
   /**
+   * Starts periodic reconnection attempts after initial retries are exhausted.
+   * Attempts to reconnect every RECONNECT_INTERVAL_MS until successful.
+   */
+  private static startPeriodicReconnect(): void {
+    if (this.reconnectTimer) return; // Already running
+
+    logger.info(
+      { intervalMs: this.RECONNECT_INTERVAL_MS },
+      "🔄 Starting periodic Redis reconnection",
+    );
+
+    this.reconnectTimer = setInterval(async () => {
+      if (this.isConnected) {
+        RedisClient.stopPeriodicReconnect();
+        return;
+      }
+
+      logger.info("🔄 Periodic Redis reconnection attempt...");
+
+      try {
+        // Destroy the old broken instance
+        if (this.instance) {
+          this.instance.removeAllListeners();
+          this.instance.disconnect();
+          this.instance = null;
+        }
+
+        // Create a fresh connection (getInstance will create a new one)
+        const redis = RedisClient.getInstance();
+        if (redis) {
+          await redis.ping();
+          logger.info("✅ Redis reconnected via periodic attempt");
+          RedisClient.stopPeriodicReconnect();
+        }
+      } catch (err) {
+        logger.debug({ err }, "⏳ Periodic reconnection attempt failed");
+      }
+    }, this.RECONNECT_INTERVAL_MS);
+  }
+
+  /**
+   * Stops periodic reconnection attempts.
+   */
+  private static stopPeriodicReconnect(): void {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+      this.reconnectTimer = null;
+      logger.info("✅ Periodic reconnection stopped");
+    }
+  }
+
+  /**
    * Tests the Redis connection.
    * Returns true if Redis is reachable.
    */
@@ -99,6 +160,8 @@ export class RedisClient {
    * Gracefully shuts down the Redis connection.
    */
   public static async disconnect(): Promise<void> {
+    RedisClient.stopPeriodicReconnect();
+
     if (this.instance) {
       await this.instance.quit();
       this.instance = null;

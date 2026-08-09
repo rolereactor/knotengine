@@ -326,3 +326,55 @@ export function recordWebhookDelivery(
   });
   webhookDeliveryLatency.observe({ event }, latencySeconds);
 }
+
+/**
+ * Instruments Mongoose to record query latency.
+ * Call once during server startup.
+ */
+export function instrumentMongoose(): void {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const mongoose = require("mongoose");
+  mongoose.set("debug", false);
+
+  mongoose.plugin((schema: any) => {
+    schema.pre("find", function (this: any) {
+      this._startTime = Date.now();
+    });
+    schema.post("find", function (this: any, _docs: any) {
+      const duration = (Date.now() - (this._startTime || Date.now())) / 1000;
+      dbQueryLatency.observe(
+        {
+          collection: this?.constructor?.modelName || "unknown",
+          operation: "find",
+        },
+        duration,
+      );
+    });
+    schema.pre("findOne", function (this: any) {
+      this._startTime = Date.now();
+    });
+    schema.post("findOne", function (this: any, _doc: any) {
+      const duration = (Date.now() - (this._startTime || Date.now())) / 1000;
+      dbQueryLatency.observe(
+        {
+          collection: this?.constructor?.modelName || "unknown",
+          operation: "findOne",
+        },
+        duration,
+      );
+    });
+    schema.pre("aggregate", function (this: any) {
+      this._startTime = Date.now();
+    });
+    schema.post("aggregate", function (this: any) {
+      const duration = (Date.now() - (this._startTime || Date.now())) / 1000;
+      dbQueryLatency.observe(
+        {
+          collection: this?.constructor?.modelName || "unknown",
+          operation: "aggregate",
+        },
+        duration,
+      );
+    });
+  });
+}

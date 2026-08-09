@@ -97,10 +97,12 @@ export class ConfirmationEngine {
         asset: event.asset,
       });
 
+      // Fetch merchant once for both branches
+      const merchant = await Merchant.findById(invoice.merchantId);
+      if (!merchant) return { matched: false } as const;
+
       if (!existingEvent) {
         // 1.5. Validate Asset
-        const merchant = await Merchant.findById(invoice.merchantId);
-        if (!merchant) return { matched: false } as const;
 
         // Asset validation: Must match exactly
         const isAssetMatch =
@@ -153,34 +155,12 @@ export class ConfirmationEngine {
           },
         });
 
-        const tolerance = merchant.underpaymentTolerancePercentage ?? 1;
-        const minRequired = CryptoMath.multiply(
-          invoice.cryptoAmount,
-          CryptoMath.divide(CryptoMath.subtract(100, tolerance), 100),
-        );
-        const isOverpayment = CryptoMath.greaterThan(
+        const { status: newStatus, amountStatus } = this.resolveStatus(
+          invoice,
           totalCryptoReceived,
-          CryptoMath.multiply(invoice.cryptoAmount, 1.05),
+          event.confirmations,
+          merchant.underpaymentTolerancePercentage,
         );
-
-        // Determine amount status
-        let amountStatus: InvoiceStatus = "confirming";
-        if (CryptoMath.lessThan(totalCryptoReceived, minRequired)) {
-          amountStatus = "partially_paid";
-        } else if (isOverpayment) {
-          amountStatus = "overpaid";
-        }
-
-        // Determine new status based on confirmation depth AND amount
-        let newStatus = this.determineStatus(invoice, event.confirmations);
-
-        if (amountStatus === "partially_paid") {
-          newStatus = "partially_paid";
-        } else if (amountStatus === "overpaid") {
-          if (newStatus === "confirmed") {
-            newStatus = "overpaid";
-          }
-        }
 
         const isTerminalSuccess =
           newStatus === "confirmed" || newStatus === "overpaid";
@@ -337,35 +317,14 @@ export class ConfirmationEngine {
         blockNumber: event.blockNumber,
       });
 
-      const merchant = await Merchant.findById(invoice.merchantId);
       const totalCryptoReceived = invoice.cryptoAmountReceived || 0;
 
-      const tolerance = merchant?.underpaymentTolerancePercentage ?? 1;
-      const minRequired = CryptoMath.multiply(
-        invoice.cryptoAmount,
-        CryptoMath.divide(CryptoMath.subtract(100, tolerance), 100),
-      );
-      const isOverpayment = CryptoMath.greaterThan(
+      const { status: newStatus, amountStatus } = this.resolveStatus(
+        invoice,
         totalCryptoReceived,
-        CryptoMath.multiply(invoice.cryptoAmount, 1.05),
+        event.confirmations,
+        merchant?.underpaymentTolerancePercentage,
       );
-
-      let amountStatus: InvoiceStatus = "confirming";
-      if (CryptoMath.lessThan(totalCryptoReceived, minRequired)) {
-        amountStatus = "partially_paid";
-      } else if (isOverpayment) {
-        amountStatus = "overpaid";
-      }
-
-      let newStatus = this.determineStatus(invoice, event.confirmations);
-
-      if (amountStatus === "partially_paid") {
-        newStatus = "partially_paid";
-      } else if (amountStatus === "overpaid") {
-        if (newStatus === "confirmed") {
-          newStatus = "overpaid";
-        }
-      }
 
       SocketService.emitStatusUpdate(invoice.invoiceId, newStatus, {
         confirmations: event.confirmations,
@@ -407,7 +366,7 @@ export class ConfirmationEngine {
   private static determineStatus(
     invoice: IInvoice,
     confirmations: number,
-  ): string {
+  ): InvoiceStatus {
     if (confirmations <= 0) {
       return "mempool_detected";
     }
@@ -417,6 +376,46 @@ export class ConfirmationEngine {
     }
 
     return "confirming";
+  }
+
+  /**
+   * Resolves the final invoice status by combining confirmation depth
+   * with the payment amount status (under/overpaid).
+   */
+  private static resolveStatus(
+    invoice: IInvoice,
+    totalCryptoReceived: number,
+    confirmations: number,
+    underpaymentTolerancePercentage?: number,
+  ): { status: InvoiceStatus; amountStatus: InvoiceStatus } {
+    const tolerance = underpaymentTolerancePercentage ?? 1;
+    const minRequired = CryptoMath.multiply(
+      invoice.cryptoAmount,
+      CryptoMath.divide(CryptoMath.subtract(100, tolerance), 100),
+    );
+    const isOverpayment = CryptoMath.greaterThan(
+      totalCryptoReceived,
+      CryptoMath.multiply(invoice.cryptoAmount, 1.05),
+    );
+
+    let amountStatus: InvoiceStatus = "confirming";
+    if (CryptoMath.lessThan(totalCryptoReceived, minRequired)) {
+      amountStatus = "partially_paid";
+    } else if (isOverpayment) {
+      amountStatus = "overpaid";
+    }
+
+    let status = this.determineStatus(invoice, confirmations);
+
+    if (amountStatus === "partially_paid") {
+      status = "partially_paid";
+    } else if (amountStatus === "overpaid") {
+      if (status === "confirmed") {
+        status = "overpaid";
+      }
+    }
+
+    return { status, amountStatus };
   }
 
   /**

@@ -117,6 +117,22 @@ export class WebhookDispatcher {
 
     const payloadString = JSON.stringify(payload);
     let anySuccess = false;
+    const deliveryRecords: Array<{
+      merchantId: string;
+      invoiceId: string;
+      eventType: string;
+      url: string;
+      attempt: number;
+      status: "success" | "failed";
+      statusCode?: number;
+      responseBody?: string;
+      errorMessage?: string;
+      duration: number;
+    }> = [];
+    const endpointUpdates: Array<{
+      filter: { _id: string };
+      update: { $set: Record<string, unknown> };
+    }> = [];
 
     for (const endpoint of endpoints) {
       // Check if endpoint should receive this event
@@ -158,8 +174,11 @@ export class WebhookDispatcher {
         if (response.ok) {
           anySuccess = true;
 
-          await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
-            $set: { lastSuccessAt: new Date(), consecutiveFailures: 0 },
+          endpointUpdates.push({
+            filter: { _id: endpoint._id.toString() },
+            update: {
+              $set: { lastSuccessAt: new Date(), consecutiveFailures: 0 },
+            },
           });
 
           const updateSet: Record<string, unknown> = {
@@ -173,7 +192,7 @@ export class WebhookDispatcher {
 
           await Invoice.findByIdAndUpdate(invoice._id, { $set: updateSet });
 
-          await WebhookDelivery.create({
+          deliveryRecords.push({
             merchantId: invoice.merchantId.toString(),
             invoiceId: invoice.invoiceId,
             eventType: event,
@@ -214,17 +233,20 @@ export class WebhookDispatcher {
         const newFailures = endpoint.consecutiveFailures + 1;
         const shouldDisable = newFailures >= this.MAX_CONSECUTIVE_FAILURES;
 
-        await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
-          $set: {
-            lastFailureAt: new Date(),
-            consecutiveFailures: newFailures,
-            ...(shouldDisable
-              ? { isActive: false, disabledAt: new Date() }
-              : {}),
+        endpointUpdates.push({
+          filter: { _id: endpoint._id.toString() },
+          update: {
+            $set: {
+              lastFailureAt: new Date(),
+              consecutiveFailures: newFailures,
+              ...(shouldDisable
+                ? { isActive: false, disabledAt: new Date() }
+                : {}),
+            },
           },
         });
 
-        await WebhookDelivery.create({
+        deliveryRecords.push({
           merchantId: invoice.merchantId.toString(),
           invoiceId: invoice.invoiceId,
           eventType: event,
@@ -268,6 +290,18 @@ export class WebhookDispatcher {
           });
         }
       }
+    }
+
+    if (deliveryRecords.length > 0) {
+      await WebhookDelivery.insertMany(deliveryRecords);
+    }
+
+    if (endpointUpdates.length > 0) {
+      await WebhookEndpoint.bulkWrite(
+        endpointUpdates.map(({ filter, update }) => ({
+          updateOne: { filter, update },
+        })),
+      );
     }
 
     return anySuccess;

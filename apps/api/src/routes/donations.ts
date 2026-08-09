@@ -10,6 +10,7 @@ import { z } from "zod";
 import { Donation, DonationMessage } from "@qodinger/knot-database";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { apiError } from "../utils/api-error.js";
+import { RedisClient } from "../infra/redis-client.js";
 import * as crypto from "crypto";
 
 const sanitizeDescription = (val?: string) =>
@@ -853,6 +854,21 @@ export async function donationRoutes(app: FastifyInstance) {
         });
       }
 
+      // Check Redis cache first (60s TTL)
+      const cacheKey = `leaderboard:${donation._id}:${limit}`;
+      const cached = await RedisClient.get<
+        {
+          rank: number;
+          donor_name: string;
+          total_amount: number;
+          donation_count: number;
+          last_donation: string;
+        }[]
+      >(cacheKey);
+      if (cached) {
+        return reply.send({ object: "list", data: cached });
+      }
+
       // Aggregate top donors by name
       const topDonors = await DonationMessage.aggregate([
         {
@@ -874,15 +890,20 @@ export async function donationRoutes(app: FastifyInstance) {
         { $limit: limit },
       ]);
 
+      const leaderboard = topDonors.map((d, i) => ({
+        rank: i + 1,
+        donor_name: d._id,
+        total_amount: d.totalAmount,
+        donation_count: d.donationCount,
+        last_donation: d.lastDonation,
+      }));
+
+      // Cache for 60 seconds
+      await RedisClient.set(cacheKey, leaderboard, 60);
+
       return reply.send({
         object: "list",
-        data: topDonors.map((d, i) => ({
-          rank: i + 1,
-          donor_name: d._id,
-          total_amount: d.totalAmount,
-          donation_count: d.donationCount,
-          last_donation: d.lastDonation,
-        })),
+        data: leaderboard,
       });
     },
   );
