@@ -164,7 +164,7 @@
   - File: `apps/api/src/routes/donations.ts:847-865`
   - Use Redis with 60s TTL
 
-- [ ] **P9** Cache merchant settings in Redis (invalidate on update)
+- [x] **P9** Cache merchant settings in Redis (invalidate on update)
   - File: `apps/api/src/middleware/auth.middleware.ts`
 
 ### 3.4 Redis
@@ -298,7 +298,7 @@
 
 ### 6.2 Environment
 
-- [ ] **I4** Validate all required env vars on startup (fail fast)
+- [x] **I4** Validate all required env vars on startup (fail fast)
   - File: `apps/api/src/main.ts`
   - Use `envalid` or custom validator
 
@@ -410,13 +410,13 @@
 | ---------------------------- | ------- | -------- | --------- |
 | 1. Security Hardening        | 19      | 19       | 0         |
 | 2. Observability & Logging   | 8       | 8        | 0         |
-| 3. Performance & Scalability | 12      | 11       | 1         |
+| 3. Performance & Scalability | 12      | 12       | 0         |
 | 4. Developer Experience      | 10      | 10       | 0         |
 | 5. Merchant UX               | 14      | 13       | 1         |
-| 6. Infrastructure            | 8       | 7        | 1         |
+| 6. Infrastructure            | 8       | 8        | 0         |
 | 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
 | 8. Code Quality              | 8       | 8        | 0         |
-| **Total**                    | **105** | **102**  | **3**     |
+| **Total**                    | **105** | **104**  | **1**     |
 
 ---
 
