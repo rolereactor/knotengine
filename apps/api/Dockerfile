@@ -35,6 +35,11 @@ COPY --from=builder /app/packages/crypto ./packages/crypto
 COPY --from=builder /app/packages/database ./packages/database
 COPY --from=builder /app/packages/types ./packages/types
 
+RUN addgroup -S knot && adduser -S knot -G knot
+RUN chown -R knot:knot /app
+
+USER knot
+
 WORKDIR /app/apps/api
 ENV NODE_ENV=production
 EXPOSE 5050

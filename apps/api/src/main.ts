@@ -78,6 +78,54 @@ if (!envLoaded) {
   );
 }
 
+// ──────────────────────────────────────────────
+// Validate required environment variables (fail fast)
+// ──────────────────────────────────────────────
+function validateEnv(): void {
+  const errors: string[] = [];
+
+  if (!process.env.DATABASE_URL) {
+    errors.push("DATABASE_URL is required (MongoDB connection string)");
+  } else if (!process.env.DATABASE_URL.startsWith("mongodb")) {
+    errors.push("DATABASE_URL must start with 'mongodb' or 'mongodb+srv'");
+  }
+
+  if (!process.env.AUTH_SECRET) {
+    errors.push("AUTH_SECRET is required (NextAuth secret, min 16 chars)");
+  } else if (process.env.AUTH_SECRET.length < 16) {
+    errors.push("AUTH_SECRET must be at least 16 characters");
+  }
+
+  if (!process.env.INTERNAL_SECRET) {
+    errors.push(
+      "INTERNAL_SECRET is required (Dashboard <-> API communication secret, min 16 chars)",
+    );
+  } else if (process.env.INTERNAL_SECRET.length < 16) {
+    errors.push("INTERNAL_SECRET must be at least 16 characters");
+  }
+
+  const hasAlchemy = !!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY;
+  const hasTatum = !!process.env.TATUM_WEBHOOK_SECRET;
+  if (!hasAlchemy && !hasTatum) {
+    errors.push(
+      "At least one of ALCHEMY_WEBHOOK_SIGNING_KEY or TATUM_WEBHOOK_SECRET is required for webhook verification",
+    );
+  }
+
+  if (errors.length > 0) {
+    logger.error("❌ Missing or invalid environment variables:");
+    for (const err of errors) {
+      logger.error(`   • ${err}`);
+    }
+    logger.error(
+      "\n💡 Copy .env.example to .env.local and fill in the required values.",
+    );
+    process.exit(1);
+  }
+}
+
+validateEnv();
+
 // Initialize Sentry before anything else so unhandled exceptions are captured
 initSentry(packageJson.version);
 
@@ -486,6 +534,9 @@ const start = async () => {
       process.env.DATABASE_URL || "mongodb://127.0.0.1:27017/knotengine";
 
     await connectToDatabase(mongoUri);
+
+    // Wire up database query metrics
+    Metrics.instrumentMongoose();
 
     startBackgroundJobs();
 

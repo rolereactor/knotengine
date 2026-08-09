@@ -1,0 +1,142 @@
+# ══════════════════════════════════════════════
+# KnotEngine — Local Development
+# ══════════════════════════════════════════════
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#
+# Sources code is mounted for live reload.
+# Uses .env.local for configuration.
+# ══════════════════════════════════════════════
+
+services:
+  # ── MongoDB ──
+  mongodb:
+    image: mongo:7-jammy
+    container_name: knot_mongodb_dev
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-knotadmin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme}
+      MONGO_INITDB_DATABASE: knotengine
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_dev_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - knotnet_dev
+
+  # ── Redis ──
+  redis:
+    image: redis:7-alpine
+    container_name: knot_redis_dev
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - knotnet_dev
+
+  # ── API Engine ──
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: builder
+    container_name: knot_api_dev
+    restart: unless-stopped
+    ports:
+      - "5050:5050"
+    env_file: .env.local
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: mongodb://${MONGO_USER:-knotadmin}:${MONGO_PASSWORD:-changeme}@mongodb:27017/knotengine?authSource=admin
+      REDIS_URL: redis://redis:6379
+    command: ["pnpm", "--filter", "api", "dev"]
+    working_dir: /app
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages:/app/packages
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - knotnet_dev
+
+  # ── Dashboard ──
+  dashboard:
+    build:
+      context: .
+      dockerfile: apps/dashboard/Dockerfile
+      target: builder
+    container_name: knot_dashboard_dev
+    restart: unless-stopped
+    ports:
+      - "5052:5052"
+    env_file: .env.local
+    environment:
+      NODE_ENV: development
+      PORT: 5052
+      NEXT_PUBLIC_API_URL: http://localhost:5050
+      NEXT_PUBLIC_CHECKOUT_URL: http://localhost:5051
+    command: ["pnpm", "--filter", "dashboard", "dev"]
+    working_dir: /app
+    volumes:
+      - ./apps/dashboard/src:/app/apps/dashboard/src
+      - ./apps/dashboard/app:/app/apps/dashboard/app
+      - ./packages/types/src:/app/packages/types/src
+    depends_on:
+      - api
+    networks:
+      - knotnet_dev
+
+  # ── Checkout ──
+  checkout:
+    build:
+      context: .
+      dockerfile: apps/checkout/Dockerfile
+      target: builder
+    container_name: knot_checkout_dev
+    restart: unless-stopped
+    ports:
+      - "5051:5051"
+    env_file: .env.local
+    environment:
+      NODE_ENV: development
+      PORT: 5051
+      NEXT_PUBLIC_API_URL: http://localhost:5050
+    command: ["pnpm", "--filter", "checkout", "dev"]
+    working_dir: /app
+    volumes:
+      - ./apps/checkout/src:/app/apps/checkout/src
+      - ./apps/checkout/app:/app/apps/checkout/app
+      - ./packages/types/src:/app/packages/types/src
+    depends_on:
+      - api
+    networks:
+      - knotnet_dev
+
+volumes:
+  mongo_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  knotnet_dev:
+    driver: bridge
