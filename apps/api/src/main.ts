@@ -85,7 +85,10 @@ if (!envLoaded) {
 // ──────────────────────────────────────────────
 function validateEnv(): void {
   const errors: string[] = [];
+  const warnings: string[] = [];
+  const isProd = process.env.NODE_ENV === "production";
 
+  // ── Core Infrastructure (always required) ──
   if (!process.env.DATABASE_URL) {
     errors.push("DATABASE_URL is required (MongoDB connection string)");
   } else if (!process.env.DATABASE_URL.startsWith("mongodb")) {
@@ -106,12 +109,88 @@ function validateEnv(): void {
     errors.push("INTERNAL_SECRET must be at least 16 characters");
   }
 
+  // ── Blockchain Providers (at least one webhook secret required) ──
   const hasAlchemy = !!process.env.ALCHEMY_WEBHOOK_SIGNING_KEY;
   const hasTatum = !!process.env.TATUM_WEBHOOK_SECRET;
+
   if (!hasAlchemy && !hasTatum) {
     errors.push(
       "At least one of ALCHEMY_WEBHOOK_SIGNING_KEY or TATUM_WEBHOOK_SECRET is required for webhook verification",
     );
+  }
+
+  // Conditional: full Alchemy setup requires API key + auth token + notify webhook ID
+  if (hasAlchemy) {
+    if (!process.env.ALCHEMY_API_KEY) {
+      errors.push(
+        "ALCHEMY_API_KEY is required when ALCHEMY_WEBHOOK_SIGNING_KEY is set",
+      );
+    }
+    if (!process.env.ALCHEMY_AUTH_TOKEN) {
+      warnings.push(
+        "ALCHEMY_AUTH_TOKEN is recommended for Alchemy webhook management",
+      );
+    }
+    if (!process.env.ALCHEMY_NOTIFY_WEBHOOK_ID) {
+      warnings.push(
+        "ALCHEMY_NOTIFY_WEBHOOK_ID is recommended for Alchemy webhook management",
+      );
+    }
+  }
+
+  // Conditional: full Tatum setup requires API key
+  if (hasTatum && !process.env.TATUM_API_KEY) {
+    errors.push("TATUM_API_KEY is required when TATUM_WEBHOOK_SECRET is set");
+  }
+
+  // ── Service URLs ──
+  if (!process.env.PUBLIC_URL) {
+    warnings.push(
+      "PUBLIC_URL is not set — Tatum webhook callbacks will use localhost",
+    );
+  }
+
+  if (!process.env.CHECKOUT_URL && !process.env.NEXT_PUBLIC_CHECKOUT_URL) {
+    warnings.push(
+      "Neither CHECKOUT_URL nor NEXT_PUBLIC_CHECKOUT_URL is set — payment links will fall back to http://localhost:5051",
+    );
+  }
+
+  if (!process.env.DASHBOARD_URL && !process.env.NEXT_PUBLIC_DASHBOARD_URL) {
+    warnings.push(
+      "Neither DASHBOARD_URL nor NEXT_PUBLIC_DASHBOARD_URL is set — email links will fall back to http://localhost:5052",
+    );
+  }
+
+  // ── Production-only validations ──
+  if (isProd) {
+    if (!process.env.ALLOWED_ORIGINS) {
+      errors.push(
+        "ALLOWED_ORIGINS is required in production (comma-separated list of allowed origins)",
+      );
+    }
+
+    const hasEmail =
+      !!process.env.RESEND_API_KEY ||
+      (!!process.env.GMAIL_USER && !!process.env.GMAIL_APP_PASSWORD);
+    if (!hasEmail) {
+      warnings.push(
+        "No email provider configured (RESEND_API_KEY or GMAIL_USER + GMAIL_APP_PASSWORD) — transactional emails will not be sent",
+      );
+    }
+
+    if (!process.env.SENTRY_DSN) {
+      warnings.push(
+        "SENTRY_DSN is not set — production errors will not be reported to Sentry",
+      );
+    }
+  }
+
+  // ── Output results ──
+  if (warnings.length > 0) {
+    for (const warn of warnings) {
+      logger.warn(`⚠️  ${warn}`);
+    }
   }
 
   if (errors.length > 0) {

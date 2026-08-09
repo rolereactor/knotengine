@@ -15,6 +15,7 @@ import * as ecc from "tiny-secp256k1";
 import { AuditLogger } from "../../core/audit-logger.js";
 import { safeCompare } from "../../utils/crypto.js";
 import { apiError } from "../../utils/api-error.js";
+import { invalidateMerchantCache } from "../../middleware/auth.middleware.js";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -491,6 +492,9 @@ export const MerchantCoreController = {
     );
 
     console.log("✅ MongoDB update result:", updateResult);
+
+    // Invalidate cached merchant data so auth middleware picks up fresh settings
+    invalidateMerchantCache(merchant._id.toString()).catch(() => {});
 
     // Fetch fresh data after update
     const updated = await Merchant.findById(merchant._id);

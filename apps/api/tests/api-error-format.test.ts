@@ -153,8 +153,13 @@ describe("Source code: no raw error responses", () => {
     const violations: string[] = [];
 
     for (const file of allFiles) {
-      // Skip the utility file itself and test files
-      if (file.includes("api-error.ts") || file.includes("/tests/")) continue;
+      // Skip the utility file itself, test files, and health check (no apiError responses)
+      if (
+        file.includes("api-error.ts") ||
+        file.includes("/tests/") ||
+        file.includes("routes/health.ts")
+      )
+        continue;
 
       const content = readFileSync(file, "utf-8");
       if (usesReplyCode.test(content) && !importsApiError.test(content)) {

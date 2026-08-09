@@ -3,6 +3,19 @@ import { Merchant, ApiKey } from "@qodinger/knot-database";
 import * as crypto from "crypto";
 import { safeCompare } from "../utils/crypto.js";
 import { apiError } from "../utils/api-error.js";
+import { RedisClient } from "../infra/redis-client.js";
+
+const MERCHANT_CACHE_TTL_SECONDS = 300;
+
+function merchantCacheKey(merchantId: string): string {
+  return `merchant:${merchantId}`;
+}
+
+export async function invalidateMerchantCache(
+  merchantId: string,
+): Promise<void> {
+  await RedisClient.del(merchantCacheKey(merchantId));
+}
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -27,7 +40,26 @@ export const requireAuth = async (
       isActive: true,
     }).populate("merchantId");
     if (foundKey) {
-      const merchant = foundKey.merchantId as any;
+      const populatedMerchant = foundKey.merchantId as any;
+      const merchantId = populatedMerchant?._id?.toString();
+
+      let merchant: any;
+      if (merchantId) {
+        const cached = await RedisClient.get<any>(merchantCacheKey(merchantId));
+        if (cached) {
+          merchant = cached;
+        } else {
+          merchant = populatedMerchant;
+          RedisClient.set(
+            merchantCacheKey(merchantId),
+            merchant,
+            MERCHANT_CACHE_TTL_SECONDS,
+          ).catch(() => {});
+        }
+      } else {
+        merchant = populatedMerchant;
+      }
+
       if (!merchant.isActive || merchant.isDeleted) {
         return apiError(
           reply,
@@ -65,7 +97,17 @@ export const requireAuth = async (
 
     const merchant = await Merchant.findOne(query);
     if (merchant) {
-      request.merchant = merchant;
+      const cacheId = (merchant as any).merchantId || merchant._id.toString();
+      const cached = await RedisClient.get<any>(merchantCacheKey(cacheId));
+      const result = cached || merchant;
+      if (!cached) {
+        RedisClient.set(
+          merchantCacheKey(cacheId),
+          result,
+          MERCHANT_CACHE_TTL_SECONDS,
+        ).catch(() => {});
+      }
+      request.merchant = result;
       return;
     }
     return apiError(
