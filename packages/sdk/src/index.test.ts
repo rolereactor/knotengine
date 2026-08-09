@@ -8,6 +8,9 @@ import {
 import * as crypto from "crypto";
 
 const mockInterceptors = {
+  request: {
+    use: vi.fn(),
+  },
   response: {
     use: vi.fn(),
   },
@@ -38,6 +41,7 @@ describe("KnotClient SDK", () => {
     mockAxiosInstance.post.mockReset();
     mockAxiosInstance.get.mockReset();
     mockAxiosInstance.patch.mockReset();
+    mockInterceptors.request.use.mockReset();
     mockInterceptors.response.use.mockReset();
   });
 
