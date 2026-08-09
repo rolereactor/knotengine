@@ -109,6 +109,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
           status: z.string().optional(),
           include_testnet: z.enum(["true", "false"]).optional(),
           only_testnet: z.enum(["true", "false"]).optional(),
+          search: z.string().max(200).optional(),
           page: z.coerce.number().int().min(1).optional(),
           limit: z.coerce.number().int().min(1).max(100).optional(),
         }),
@@ -137,5 +138,41 @@ export async function invoiceRoutes(app: FastifyInstance) {
       preHandler: requireAuth,
     },
     InvoicesController.resolveInvoice,
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/invoices/export — Export Invoices (CSV/JSON)
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/invoices/export",
+    {
+      preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          status: z.string().optional(),
+          include_testnet: z.enum(["true", "false"]).optional(),
+          only_testnet: z.enum(["true", "false"]).optional(),
+          search: z.string().max(200).optional(),
+          format: z.enum(["csv", "json"]).optional(),
+        }),
+      },
+    },
+    InvoicesController.listInvoicesExport,
+  );
+
+  // ──────────────────────────────────────────────
+  // POST /v1/invoices/bulk-cancel — Bulk Cancel Invoices
+  // ──────────────────────────────────────────────
+  server.post(
+    "/v1/invoices/bulk-cancel",
+    {
+      preHandler: requireAuth,
+      schema: {
+        body: z.object({
+          invoice_ids: z.array(z.string()).min(1).max(100),
+        }),
+      },
+    },
+    InvoicesController.bulkCancelInvoices,
   );
 }

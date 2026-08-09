@@ -425,6 +425,10 @@ describe("API Auth & Response Contract", () => {
         url: "/v1/merchants/mid_test/keys/key_test/revoke",
         body: {},
       },
+      {
+        method: "POST",
+        url: "/v1/merchants/mid_test/keys/key_test/rotate",
+      },
 
       // ── /v1/merchants/:merchantId — webhook endpoint management ────────────
       { method: "GET", url: "/v1/merchants/mid_test/webhooks/endpoints" },

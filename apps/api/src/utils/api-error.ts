@@ -29,6 +29,8 @@ export type ErrorCode =
   | "api_key_not_found"
   // Webhook Endpoints
   | "webhook_endpoint_not_found"
+  | "no_successful_delivery"
+  | "replay_failed"
   // Payment Links
   | "payment_link_not_found"
   | "payment_link_expired"
@@ -49,6 +51,9 @@ export type ErrorCode =
   | "plan_limit_reached"
   // Idempotency
   | "idempotency_conflict"
+  // Bulk Operations
+  | "bulk_cancel_no_ids"
+  | "bulk_cancel_partial"
   // Generic
   | "invalid_request"
   | "not_found"

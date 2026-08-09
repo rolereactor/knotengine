@@ -212,6 +212,114 @@ export const ApiKeyController = {
       created_at: apiKey.createdAt,
     };
   },
+
+  rotateKey: async (
+    request: any,
+    reply: FastifyReply,
+    resolvedMerchant?: any,
+    resolvedUser?: any,
+  ) => {
+    let merchant: any;
+    let user: any;
+
+    if (resolvedMerchant && resolvedUser) {
+      merchant = resolvedMerchant;
+      user = resolvedUser;
+    } else {
+      const ctx = await resolveAuth(request, reply);
+      if (!ctx) return;
+      merchant = ctx.merchant;
+      user = ctx.user;
+    }
+    const { keyId } = request.params;
+
+    const oldKey = await ApiKey.findOne({
+      _id: keyId,
+      merchantId: merchant._id,
+      isActive: true,
+    });
+
+    if (!oldKey) {
+      return apiError(
+        reply,
+        404,
+        "api_key_not_found",
+        "No active API key found with that ID.",
+      );
+    }
+
+    // Check plan limit — rotation creates a new key, so count + 1
+    const currentCount = await ApiKey.countDocuments({
+      merchantId: merchant._id,
+      isActive: true,
+    });
+
+    const limitCheck = checkPlanLimit(
+      merchant.plan,
+      "maxApiKeys",
+      currentCount,
+    );
+    if (!limitCheck.allowed) {
+      const limits = getPlanLimits(merchant.plan);
+      return apiError(
+        reply,
+        403,
+        "plan_limit_reached",
+        `API key limit reached for the ${merchant.plan} plan (${limits.maxApiKeys} max). Upgrade to add more.`,
+      );
+    }
+
+    // Generate new key
+    const secretKey = `knot_sk_${crypto.randomBytes(24).toString("hex")}`;
+    const newKeyHash = crypto
+      .createHash("sha256")
+      .update(secretKey)
+      .digest("hex");
+    const newKeyId = `key_${crypto.randomBytes(8).toString("hex")}`;
+    const lastFour = secretKey.slice(-4);
+
+    // Mark old key for expiry (24-hour grace period)
+    const GRACE_PERIOD_MS = 24 * 60 * 60 * 1000;
+    oldKey.expiresAt = new Date(Date.now() + GRACE_PERIOD_MS);
+    await oldKey.save();
+
+    // Create new key
+    const newKey = await ApiKey.create({
+      merchantId: merchant._id,
+      keyId: newKeyId,
+      keyHash: newKeyHash,
+      label: oldKey.label,
+      scope: oldKey.scope,
+      lastFour,
+      createdBy: user._id,
+      isActive: true,
+    });
+
+    await AuditLogger.security(
+      user._id.toString(),
+      "api_key_rotated",
+      request,
+      {
+        merchantId: merchant.merchantId,
+        oldKeyId: oldKey.keyId,
+        newKeyId: newKey.keyId,
+        label: newKey.label,
+      },
+    );
+
+    return reply.code(201).send({
+      object: "key",
+      id: newKey.keyId,
+      secret: secretKey,
+      label: newKey.label,
+      scope: newKey.scope,
+      last_four: newKey.lastFour,
+      created_at: newKey.createdAt,
+      warning: "Store this secret key securely. It will not be shown again.",
+      rotated_from: oldKey.keyId,
+      old_key_expires_at: oldKey.expiresAt,
+    });
+  },
 };
 
 async function resolveAuth(

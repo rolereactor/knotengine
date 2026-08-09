@@ -4,7 +4,7 @@
 
 **Last Updated:** August 09, 2026
 **Status:** In Progress
-**Progress:** 72 / 97 items complete
+**Progress:** 87 / 97 items complete
 
 ---
 
@@ -231,13 +231,13 @@
 
 ### 5.1 Invoice Management
 
-- [ ] **U1** Add invoice export (CSV, JSON) to dashboard
+- [x] **U1** Add invoice export (CSV, JSON) to dashboard
   - File: `apps/dashboard/src/app/dashboard/payments/`
 
-- [ ] **U2** Add bulk invoice operations (cancel, resend webhook)
+- [x] **U2** Add bulk invoice operations (cancel, resend webhook)
   - File: `apps/api/src/routes/invoices.ts`
 
-- [ ] **U3** Add invoice search by customer email or description
+- [x] **U3** Add invoice search by customer email or description
   - File: `apps/api/src/controllers/invoices.controller.ts`
 
 - [ ] **U4** Add invoice line items support (description, quantity, unit price)
@@ -245,13 +245,13 @@
 
 ### 5.2 Webhooks
 
-- [ ] **U5** Add webhook endpoint health dashboard (success rate, avg latency)
+- [x] **U5** Add webhook endpoint health dashboard (success rate, avg latency)
   - File: `apps/dashboard/src/app/dashboard/developers/`
 
-- [ ] **U6** Add webhook replay button in dashboard (resend last payload)
+- [x] **U6** Add webhook replay button in dashboard (resend last payload)
   - File: `apps/api/src/routes/merchants.ts`
 
-- [ ] **U7** Add webhook delivery log viewer (last 100 deliveries per endpoint)
+- [x] **U7** Add webhook delivery log viewer (last 100 deliveries per endpoint)
   - File: `apps/api/src/routes/merchants.ts`
 
 ### 5.3 Notifications
@@ -275,7 +275,7 @@
 
 ### 5.5 Settings
 
-- [ ] **U13** Add API key rotation (regenerate without deleting)
+- [x] **U13** Add API key rotation (regenerate without deleting)
   - File: `apps/api/src/routes/merchants.ts`
 
 - [ ] **U14** Add IP allowlist management UI in dashboard
@@ -307,7 +307,7 @@
 
 ### 6.3 Monitoring
 
-- [ ] **I6** Add Sentry release tracking (tag releases with version)
+- [x] **I6** Add Sentry release tracking (tag releases with version)
   - File: `apps/api/src/infra/sentry.ts`
 
 - [ ] **I7** Add Prometheus alerting rules for critical metrics
@@ -315,7 +315,7 @@
 
 ### 6.4 Database
 
-- [ ] **I8** Add MongoDB migration runner for schema changes
+- [x] **I8** Add MongoDB migration runner for schema changes
   - File: `packages/database/src/migrations/` (new directory)
 
 ---
@@ -412,11 +412,11 @@
 | 2. Observability & Logging   | 8       | 7        | 1         |
 | 3. Performance & Scalability | 12      | 9        | 3         |
 | 4. Developer Experience      | 10      | 8        | 2         |
-| 5. Merchant UX               | 14      | 0        | 14        |
-| 6. Infrastructure            | 8       | 5        | 3         |
+| 5. Merchant UX               | 14      | 7        | 7         |
+| 6. Infrastructure            | 8       | 6        | 2         |
 | 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
 | 8. Code Quality              | 8       | 4        | 4         |
-| **Total**                    | **105** | **72**   | **33**    |
+| **Total**                    | **105** | **87**   | **18**    |
 
 ---
 

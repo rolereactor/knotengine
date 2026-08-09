@@ -30,6 +30,8 @@ export interface IApiKey extends Document {
   /** When the key was revoked */
   revokedAt?: Date;
   revokedReason?: string;
+  /** When this key expires (used during rotation grace period) */
+  expiresAt?: Date;
   createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +60,7 @@ const ApiKeySchema: Schema = new Schema(
     isActive: { type: Boolean, default: true },
     revokedAt: { type: Date },
     revokedReason: { type: String },
+    expiresAt: { type: Date },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },

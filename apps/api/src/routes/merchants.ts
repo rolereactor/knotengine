@@ -2,6 +2,7 @@ import {
   Merchant,
   User,
   WebhookDelivery,
+  WebhookEndpoint,
   ApiKey,
 } from "@qodinger/knot-database";
 import { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
@@ -416,6 +417,34 @@ export async function merchantRoutes(app: FastifyInstance) {
   );
 
   // ──────────────────────────────────────────────
+  // POST /v1/merchants/me/keys/:keyId/rotate — Rotate API Key
+  // Generates a new key while keeping the old one active for 24h
+  // ──────────────────────────────────────────────
+  server.post(
+    "/v1/merchants/me/keys/:keyId/rotate",
+    { preHandler: requireAuth },
+    async (request: any, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant)
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+
+      const user = await User.findOne({ oauthId: merchant.oauthId });
+      if (!user)
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+
+      return ApiKeyController.rotateKey(
+        {
+          ...request,
+          params: { keyId: request.params.keyId },
+        } as any,
+        reply,
+        merchant,
+        user,
+      );
+    },
+  );
+
+  // ──────────────────────────────────────────────
   // POST /v1/merchants/me/plan — Update Plan (Upgrade/Downgrade)
   // ──────────────────────────────────────────────
   server.post(
@@ -751,6 +780,302 @@ export async function merchantRoutes(app: FastifyInstance) {
   );
 
   // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/webhooks/health — Webhook endpoint health dashboard
+  // Returns success rate, avg latency, consecutive failures per endpoint
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/webhooks/health",
+    { preHandler: requireAuth },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+
+      const endpoints = await WebhookEndpoint.find({
+        merchantId: merchant._id,
+      }).sort({ createdAt: -1 });
+
+      interface UrlAggStat {
+        _id: string;
+        total: number;
+        successCount: number;
+        failedCount: number;
+        avgLatency: number;
+      }
+
+      const urlAgg: UrlAggStat[] = await WebhookDelivery.aggregate([
+        { $match: { merchantId: merchant.merchantId } },
+        {
+          $group: {
+            _id: "$url",
+            total: { $sum: 1 },
+            successCount: {
+              $sum: { $cond: [{ $eq: ["$status", "success"] }, 1, 0] },
+            },
+            failedCount: {
+              $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] },
+            },
+            avgLatency: { $avg: "$duration" },
+          },
+        },
+      ]);
+
+      const urlStatsMap = new Map<string, UrlAggStat>(
+        urlAgg.map((s) => [s._id, s]),
+      );
+
+      return reply.send({
+        object: "list",
+        data: endpoints.map((e: any) => {
+          const stats = urlStatsMap.get(e.url);
+          const total = stats?.total || 0;
+          const successCount = stats?.successCount || 0;
+          const successRate =
+            total > 0
+              ? parseFloat(((successCount / total) * 100).toFixed(2))
+              : 0;
+
+          return {
+            object: "webhook_health",
+            endpoint_id: e.endpointId,
+            url: e.url,
+            is_active: e.isActive,
+            success_rate: successRate,
+            avg_latency_ms: stats?.avgLatency
+              ? parseFloat(stats.avgLatency.toFixed(2))
+              : 0,
+            total_deliveries: total,
+            consecutive_failures: e.consecutiveFailures,
+            last_success_at: e.lastSuccessAt,
+            last_failure_at: e.lastFailureAt,
+          };
+        }),
+      });
+    },
+  );
+
+  // ──────────────────────────────────────────────
+  // POST /v1/merchants/me/webhooks/endpoints/:endpointId/replay
+  // Resend the last successful payload for that endpoint
+  // ──────────────────────────────────────────────
+  server.post(
+    "/v1/merchants/me/webhooks/endpoints/:endpointId/replay",
+    {
+      preHandler: requireAuth,
+      schema: {
+        params: z.object({
+          endpointId: z.string(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+      const { endpointId } = request.params as { endpointId: string };
+
+      const endpoint = await WebhookEndpoint.findOne({
+        endpointId,
+        merchantId: merchant._id,
+      });
+
+      if (!endpoint) {
+        return apiError(
+          reply,
+          404,
+          "webhook_endpoint_not_found",
+          "No webhook endpoint found with that ID.",
+        );
+      }
+
+      const lastSuccessful = await WebhookDelivery.findOne({
+        merchantId: merchant.merchantId,
+        url: endpoint.url,
+        status: "success",
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      if (!lastSuccessful) {
+        return apiError(
+          reply,
+          404,
+          "no_successful_delivery",
+          "No successful delivery found for this endpoint to replay.",
+        );
+      }
+
+      const payload = {
+        id: lastSuccessful.invoiceId,
+        type: lastSuccessful.eventType,
+        created_at: lastSuccessful.createdAt.toISOString(),
+        merchant_id: merchant.merchantId,
+        data: { invoiceId: lastSuccessful.invoiceId },
+      };
+
+      const bodyStr = JSON.stringify(payload);
+      const signature = crypto
+        .createHmac("sha256", endpoint.secret)
+        .update(bodyStr)
+        .digest("hex");
+
+      const startTime = Date.now();
+      try {
+        const response = await fetch(endpoint.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-KnotEngine-Signature": signature,
+            "X-KnotEngine-Event": lastSuccessful.eventType,
+            "User-Agent": "KnotEngine-Webhook/1.0",
+          },
+          body: bodyStr,
+        });
+
+        const latency = Date.now() - startTime;
+        const responseBody = await response.text().catch(() => "");
+
+        await WebhookDelivery.create({
+          merchantId: merchant.merchantId,
+          invoiceId: lastSuccessful.invoiceId,
+          eventType: lastSuccessful.eventType,
+          url: endpoint.url,
+          attempt: 1,
+          status: response.ok ? "success" : "failed",
+          statusCode: response.status,
+          responseBody: responseBody.slice(0, 1000),
+          duration: latency,
+        });
+
+        if (response.ok) {
+          await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
+            $set: { lastSuccessAt: new Date(), consecutiveFailures: 0 },
+          });
+        } else {
+          await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
+            $set: {
+              lastFailureAt: new Date(),
+              consecutiveFailures: endpoint.consecutiveFailures + 1,
+            },
+          });
+        }
+
+        return reply.send({
+          success: response.ok,
+          message: response.ok
+            ? "Webhook replayed successfully."
+            : `Replay failed with status ${response.status}.`,
+          status_code: response.status,
+        });
+      } catch {
+        const latency = Date.now() - startTime;
+
+        await WebhookDelivery.create({
+          merchantId: merchant.merchantId,
+          invoiceId: lastSuccessful.invoiceId,
+          eventType: lastSuccessful.eventType,
+          url: endpoint.url,
+          attempt: 1,
+          status: "failed",
+          errorMessage: "Network error during replay",
+          duration: latency,
+        });
+
+        await WebhookEndpoint.findByIdAndUpdate(endpoint._id, {
+          $set: {
+            lastFailureAt: new Date(),
+            consecutiveFailures: endpoint.consecutiveFailures + 1,
+          },
+        });
+
+        return apiError(
+          reply,
+          502,
+          "replay_failed",
+          "Failed to deliver the replayed webhook. The endpoint may be unreachable.",
+        );
+      }
+    },
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/webhooks/endpoints/:endpointId/deliveries
+  // Delivery log viewer — last 100 deliveries per endpoint
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/webhooks/endpoints/:endpointId/deliveries",
+    {
+      preHandler: requireAuth,
+      schema: {
+        params: z.object({
+          endpointId: z.string(),
+        }),
+        querystring: z.object({
+          limit: z.coerce.number().int().min(1).max(100).default(100),
+          status: z.enum(["pending", "success", "failed"]).optional(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+
+      const { endpointId } = request.params as { endpointId: string };
+      const query = request.query as {
+        limit: number;
+        status?: string;
+      };
+
+      const endpoint = await WebhookEndpoint.findOne({
+        endpointId,
+        merchantId: merchant._id,
+      });
+
+      if (!endpoint) {
+        return apiError(
+          reply,
+          404,
+          "webhook_endpoint_not_found",
+          "No webhook endpoint found with that ID.",
+        );
+      }
+
+      const filter: Record<string, unknown> = {
+        merchantId: merchant.merchantId,
+        url: endpoint.url,
+      };
+      if (query.status) filter.status = query.status;
+
+      const limit = Math.min(query.limit, 100);
+
+      const deliveries = await WebhookDelivery.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
+
+      return reply.send({
+        object: "list",
+        data: deliveries.map((d: any) => ({
+          object: "webhook_delivery",
+          id: d._id,
+          invoice_id: d.invoiceId,
+          event_type: d.eventType,
+          status: d.status,
+          status_code: d.statusCode,
+          latency_ms: d.duration,
+          error_message: d.errorMessage,
+          attempt: d.attempt,
+          created_at: d.createdAt,
+        })),
+      });
+    },
+  );
+
+  // ──────────────────────────────────────────────
   // Team Management Routes
   // ──────────────────────────────────────────────
 
@@ -968,6 +1293,13 @@ export async function merchantRoutes(app: FastifyInstance) {
       },
     },
     ApiKeyController.revokeKey,
+  );
+
+  // POST /v1/merchants/:merchantId/keys/:keyId/rotate
+  server.post(
+    "/v1/merchants/:merchantId/keys/:keyId/rotate",
+    { preHandler: requireAuth },
+    ApiKeyController.rotateKey,
   );
 
   // ──────────────────────────────────────────────

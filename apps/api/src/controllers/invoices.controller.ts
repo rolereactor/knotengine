@@ -519,6 +519,7 @@ export const InvoicesController = {
       status,
       include_testnet = "false",
       only_testnet = "false",
+      search,
       page = "1",
       limit = "20",
     } = request.query;
@@ -533,6 +534,12 @@ export const InvoicesController = {
     } else if (include_testnet !== "true") {
       // Default: exclude testnet invoices
       filter["metadata.isTestnet"] = { $ne: true };
+    }
+    if (search) {
+      filter.$or = [
+        { description: { $regex: search, $options: "i" } },
+        { "metadata.email": { $regex: search, $options: "i" } },
+      ];
     }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -627,6 +634,156 @@ export const InvoicesController = {
       cancelled: true,
       expires_at: invoice.expiresAt.toISOString(),
       created_at: invoice.createdAt.toISOString(),
+    };
+  },
+
+  listInvoicesExport: async (request: any, reply: FastifyReply) => {
+    const merchant = request.merchant;
+
+    if (!merchant) {
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Authentication required. Provide a valid API key.",
+      );
+    }
+
+    const {
+      status,
+      include_testnet = "false",
+      only_testnet = "false",
+      search,
+      format = "json",
+    } = request.query;
+
+    const filter: Record<string, unknown> = { merchantId: merchant._id };
+    if (status) {
+      filter.status = status;
+    }
+    if (only_testnet === "true") {
+      filter["metadata.isTestnet"] = true;
+    } else if (include_testnet !== "true") {
+      filter["metadata.isTestnet"] = { $ne: true };
+    }
+    if (search) {
+      filter.$or = [
+        { description: { $regex: search, $options: "i" } },
+        { "metadata.email": { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const invoices = await Invoice.find(filter).sort({ createdAt: -1 });
+
+    const rows = invoices.map((inv) => ({
+      invoice_id: inv.invoiceId,
+      amount_usd: inv.amountUsd,
+      crypto_amount: inv.cryptoAmount,
+      crypto_amount_received: inv.cryptoAmountReceived || 0,
+      crypto_currency: inv.cryptoCurrency,
+      pay_address: inv.payAddress,
+      status: inv.status,
+      confirmations: inv.confirmations,
+      required_confirmations: inv.requiredConfirmations,
+      tx_hash: inv.txHash || "",
+      fee_usd: inv.feeUsd,
+      fee_crypto: inv.feeCrypto,
+      expires_at: inv.expiresAt.toISOString(),
+      paid_at: inv.paidAt?.toISOString() || "",
+      created_at: inv.createdAt.toISOString(),
+      description: inv.description || "",
+      metadata_email: (inv.metadata?.email as string) || "",
+    }));
+
+    if (format === "csv") {
+      const headers = Object.keys(rows[0] || {});
+      const csvLines = [
+        headers.join(","),
+        ...rows.map((row) =>
+          headers
+            .map((h) => {
+              const val = String(row[h as keyof typeof row] ?? "");
+              return val.includes(",") ||
+                val.includes('"') ||
+                val.includes("\n")
+                ? `"${val.replace(/"/g, '""')}"`
+                : val;
+            })
+            .join(","),
+        ),
+      ];
+      reply.header("Content-Type", "text/csv");
+      reply.header(
+        "Content-Disposition",
+        `attachment; filename="invoices-${Date.now()}.csv"`,
+      );
+      return reply.send(csvLines.join("\n"));
+    }
+
+    return { object: "list", data: rows, total: rows.length };
+  },
+
+  bulkCancelInvoices: async (request: any, reply: FastifyReply) => {
+    const merchant = request.merchant;
+
+    if (!merchant) {
+      return apiError(
+        reply,
+        401,
+        "unauthorized",
+        "Authentication required. Provide a valid API key.",
+      );
+    }
+
+    const { invoice_ids } = request.body;
+
+    if (
+      !invoice_ids ||
+      !Array.isArray(invoice_ids) ||
+      invoice_ids.length === 0
+    ) {
+      return apiError(
+        reply,
+        400,
+        "bulk_cancel_no_ids",
+        "Provide a non-empty array of invoice IDs.",
+        "invoice_ids",
+      );
+    }
+
+    const maxBulkSize = 100;
+    if (invoice_ids.length > maxBulkSize) {
+      return apiError(
+        reply,
+        400,
+        "invalid_request",
+        `Cannot cancel more than ${maxBulkSize} invoices at once.`,
+        "invoice_ids",
+      );
+    }
+
+    const result = await Invoice.updateMany(
+      {
+        invoiceId: { $in: invoice_ids },
+        merchantId: merchant._id,
+        status: "pending",
+      },
+      { $set: { status: "expired" } },
+    );
+
+    console.info(
+      `Bulk cancel: ${result.modifiedCount}/${invoice_ids.length} invoices expired for merchant ${merchant._id}`,
+    );
+
+    return {
+      object: "bulk_cancel",
+      cancelled_count: result.modifiedCount,
+      requested_count: invoice_ids.length,
+      ...(result.modifiedCount < invoice_ids.length
+        ? {
+            note: `${invoice_ids.length - result.modifiedCount} invoice(s) were not cancelled (not found, not pending, or already processed).`,
+          }
+        : {}),
     };
   },
 

@@ -10,9 +10,13 @@
   "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "knot-migrate": "./dist/migrations/cli.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "migrate": "tsx src/migrations/cli.ts",
     "test": "echo 'No tests specified'"
   },
   "devDependencies": {

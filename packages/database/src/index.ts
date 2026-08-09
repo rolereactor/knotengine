@@ -5,6 +5,12 @@ export { MerchantMember } from "./models/merchant-member.model";
 export { ApiKey } from "./models/api-key.model";
 export { WebhookEndpoint } from "./models/webhook-endpoint.model";
 export { mongoose };
+export {
+  runMigrations,
+  revertMigration,
+  getAppliedMigrations,
+} from "./migrations/index.js";
+export type { Migration } from "./migrations/types.js";
 
 export const connectToDatabase = async (uri: string) => {
   try {

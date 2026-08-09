@@ -135,6 +135,7 @@ export const AuditLogger = {
       | "2fa_backup_used"
       | "api_key_generated"
       | "api_key_revoked"
+      | "api_key_rotated"
       | "suspicious_activity"
       | "ip_allowlist_updated",
     request?: FastifyRequest,
@@ -146,6 +147,7 @@ export const AuditLogger = {
       "2fa_backup_used": "2FA backup code used",
       api_key_generated: "New API key generated",
       api_key_revoked: "API key revoked",
+      api_key_rotated: "API key rotated",
       suspicious_activity: "Suspicious activity detected",
       ip_allowlist_updated: "IP allowlist configuration updated",
     };
