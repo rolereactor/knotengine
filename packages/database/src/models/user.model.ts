@@ -28,6 +28,12 @@ export interface IUser extends Document {
   referralCode?: string;
   referredBy?: mongoose.Types.ObjectId;
   referralEarningsUsd: number;
+  /** Affiliate Tier */
+  affiliateTier: "standard" | "silver" | "gold" | "platinum";
+  totalReferrals: number;
+  monthlyReferralEarnings: number;
+  affiliatePayoutMethod?: "crypto" | "usd_balance";
+  affiliatePayoutAddress?: string;
   /** Default merchant shown on login */
   defaultMerchantId?: string;
   /** Last accessed merchant for quick switching */
@@ -54,6 +60,15 @@ const UserSchema: Schema = new Schema(
     referralCode: { type: String, unique: true, sparse: true },
     referredBy: { type: Schema.Types.ObjectId, ref: "User" },
     referralEarningsUsd: { type: Number, default: 0 },
+    affiliateTier: {
+      type: String,
+      enum: ["standard", "silver", "gold", "platinum"],
+      default: "standard",
+    },
+    totalReferrals: { type: Number, default: 0 },
+    monthlyReferralEarnings: { type: Number, default: 0 },
+    affiliatePayoutMethod: { type: String, enum: ["crypto", "usd_balance"] },
+    affiliatePayoutAddress: { type: String },
     defaultMerchantId: { type: String },
     lastActiveMerchantId: { type: String },
   },
