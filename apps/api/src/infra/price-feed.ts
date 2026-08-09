@@ -1,6 +1,9 @@
 import { Currency } from "@qodinger/knot-types";
 import { RedisClient } from "./redis-client.js";
 import { LRUCache } from "lru-cache";
+import { childLogger } from "./logger.js";
+
+const logger = childLogger("price-feed");
 
 interface PriceData {
   [currency: string]: {
@@ -46,14 +49,15 @@ export class PriceOracle {
         }
       }
     } catch (err) {
-      console.warn("Redis cache read failed, using fallback:", err);
+      logger.warn({ err }, "Redis cache read failed, using fallback");
     }
 
     // 2. Try local LRU cache
     const localCached = this.localCache.get(coinId);
     if (localCached) {
-      console.log(
-        `📊 Returning local cache price for ${coinId}: $${localCached}`,
+      logger.info(
+        { coinId, price: localCached },
+        "📊 Returning local cache price",
       );
       return localCached;
     }
@@ -65,7 +69,10 @@ export class PriceOracle {
       await this.updateCache(cacheKey, coinId, price);
       return price;
     } catch (geckoError) {
-      console.warn("CoinGecko failed, falling back to Binance...", geckoError);
+      logger.warn(
+        { err: geckoError },
+        "CoinGecko failed, falling back to Binance",
+      );
 
       try {
         // Try Source 2: Binance
@@ -73,12 +80,15 @@ export class PriceOracle {
         await this.updateCache(cacheKey, coinId, binancePrice);
         return binancePrice;
       } catch (binanceError) {
-        console.error("Binance also failed:", binanceError);
+        logger.error({ err: binanceError }, "Binance also failed");
 
         // Final Fallback: Return stale local cache if available
         const stalePrice = this.localCache.get(coinId);
         if (stalePrice) {
-          console.warn("⚠️ Returning stale price as last resort:", stalePrice);
+          logger.warn(
+            { price: stalePrice },
+            "⚠️ Returning stale price as last resort",
+          );
           return stalePrice;
         }
 
@@ -143,7 +153,7 @@ export class PriceOracle {
     try {
       await RedisClient.set(cacheKey, price, this.CACHE_TTL_SECONDS);
     } catch (err) {
-      console.warn("Redis cache write failed:", err);
+      logger.warn({ err }, "Redis cache write failed");
     }
 
     // Update local LRU cache
@@ -203,7 +213,7 @@ export class PriceOracle {
         }
       }
     } catch (err) {
-      console.warn("Failed to clear Redis cache:", err);
+      logger.warn({ err }, "Failed to clear Redis cache");
     }
   }
 }

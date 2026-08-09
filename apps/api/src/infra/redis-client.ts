@@ -1,4 +1,7 @@
 import { Redis } from "ioredis";
+import { childLogger } from "./logger.js";
+
+const logger = childLogger("redis");
 
 /**
  * 🔴 Redis Client
@@ -19,7 +22,7 @@ export class RedisClient {
       const redisUrl = process.env.REDIS_URL;
 
       if (!redisUrl) {
-        console.warn("⚠️ REDIS_URL not set. Redis caching disabled.");
+        logger.warn("⚠️ REDIS_URL not set. Redis caching disabled.");
         return null;
       }
 
@@ -28,7 +31,7 @@ export class RedisClient {
           maxRetriesPerRequest: 3,
           retryStrategy: (times: number) => {
             if (times > 3) {
-              console.warn("❌ Redis retry limit reached, using fallback");
+              logger.warn("❌ Redis retry limit reached, using fallback");
               return null; // Stop retrying
             }
             return Math.min(times * 50, 2000); // Exponential backoff
@@ -38,29 +41,29 @@ export class RedisClient {
         });
 
         this.instance.on("connect", () => {
-          console.log("✅ Redis connected");
+          logger.info("✅ Redis connected");
           this.isConnected = true;
         });
 
         this.instance.on("error", (err: Error) => {
-          console.error("❌ Redis error:", err.message);
+          logger.error({ message: err.message }, "❌ Redis error");
           this.isConnected = false;
         });
 
         this.instance.on("close", () => {
-          console.warn("⚠️ Redis connection closed");
+          logger.warn("⚠️ Redis connection closed");
           this.isConnected = false;
         });
 
         this.instance.on("reconnecting", () => {
-          console.log("🔄 Redis reconnecting...");
+          logger.info("🔄 Redis reconnecting...");
         });
 
         this.instance.on("ready", () => {
-          console.log("🔴 Redis ready for commands");
+          logger.info("🔴 Redis ready for commands");
         });
       } catch (err) {
-        console.error("❌ Failed to initialize Redis:", err);
+        logger.error({ err }, "❌ Failed to initialize Redis");
         this.instance = null;
       }
     }
@@ -80,7 +83,7 @@ export class RedisClient {
       await redis.ping();
       return true;
     } catch (err) {
-      console.error("❌ Redis ping failed:", err);
+      logger.error({ err }, "❌ Redis ping failed");
       return false;
     }
   }
@@ -100,7 +103,7 @@ export class RedisClient {
       await this.instance.quit();
       this.instance = null;
       this.isConnected = false;
-      console.log("🔴 Redis disconnected");
+      logger.info("🔴 Redis disconnected");
     }
   }
 
@@ -123,7 +126,7 @@ export class RedisClient {
         return value as T;
       }
     } catch (err) {
-      console.warn(`Redis GET failed for key "${key}":`, err);
+      logger.warn({ key, err }, "Redis GET failed");
       return null;
     }
   }
@@ -151,7 +154,7 @@ export class RedisClient {
       }
       return true;
     } catch (err) {
-      console.warn(`Redis SET failed for key "${key}":`, err);
+      logger.warn({ key, err }, "Redis SET failed");
       return false;
     }
   }
@@ -167,7 +170,7 @@ export class RedisClient {
       await redis.del(key);
       return true;
     } catch (err) {
-      console.warn(`Redis DEL failed for key "${key}":`, err);
+      logger.warn({ key, err }, "Redis DEL failed");
       return false;
     }
   }
@@ -190,7 +193,7 @@ export class RedisClient {
         }
       });
     } catch (err) {
-      console.warn("Redis MGET failed:", err);
+      logger.warn({ err }, "Redis MGET failed");
       return keys.map(() => null);
     }
   }

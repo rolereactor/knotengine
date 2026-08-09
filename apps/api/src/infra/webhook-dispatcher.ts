@@ -10,6 +10,9 @@ import * as crypto from "crypto";
 import { NotificationService } from "./notification-service.js";
 import * as Metrics from "./metrics.js";
 import { WebhookQueue } from "./webhook-queue.js";
+import { childLogger } from "./logger.js";
+
+const logger = childLogger("webhook-dispatcher");
 
 /**
  * 📡 WebhookDispatcher
@@ -40,7 +43,7 @@ export class WebhookDispatcher {
   ): Promise<boolean> {
     const invoice = await Invoice.findOne({ invoiceId });
     if (!invoice) {
-      console.error(`WebhookDispatcher: Invoice ${invoiceId} not found`);
+      logger.error({ invoiceId }, "Invoice not found");
       return false;
     }
 
@@ -65,7 +68,7 @@ export class WebhookDispatcher {
     const invoice = await Invoice.findOne({ invoiceId });
 
     if (!invoice) {
-      console.error(`WebhookDispatcher: Invoice ${invoiceId} not found`);
+      logger.error({ invoiceId }, "Invoice not found");
       return false;
     }
 
@@ -73,9 +76,7 @@ export class WebhookDispatcher {
       invoice.webhookDelivered &&
       ["invoice.confirmed", "invoice.expired", "invoice.failed"].includes(event)
     ) {
-      console.log(
-        `📡 Webhook already delivered for invoice ${invoiceId}. Skipping.`,
-      );
+      logger.info({ invoiceId }, "📡 Webhook already delivered, skipping");
       return true;
     }
 
@@ -131,8 +132,9 @@ export class WebhookDispatcher {
       const startTime = Date.now();
 
       try {
-        console.log(
-          `📡 Dispatching ${event} to ${endpoint.url} (${endpoint.endpointId})`,
+        logger.info(
+          { event, url: endpoint.url, endpointId: endpoint.endpointId },
+          "📡 Dispatching webhook",
         );
 
         const response = await fetch(endpoint.url, {
@@ -185,8 +187,9 @@ export class WebhookDispatcher {
 
           Metrics.recordWebhookDelivery(event, true, duration / 1000);
 
-          console.log(
-            `✅ Webhook SUCCESS: ${invoiceId} ${event} delivered to ${endpoint.url}`,
+          logger.info(
+            { invoiceId, event, url: endpoint.url },
+            "✅ Webhook SUCCESS",
           );
         } else {
           throw new Error(`Endpoint returned ${response.status}`);
@@ -235,8 +238,15 @@ export class WebhookDispatcher {
 
         Metrics.recordWebhookDelivery(event, false, duration / 1000);
 
-        console.error(
-          `❌ Webhook FAILURE (${attempts}/${this.MAX_ATTEMPTS}) for ${invoiceId} to ${endpoint.url}: ${message}`,
+        logger.error(
+          {
+            attempts,
+            maxAttempts: this.MAX_ATTEMPTS,
+            invoiceId,
+            url: endpoint.url,
+            message,
+          },
+          "❌ Webhook FAILURE",
         );
 
         if (endpoint.consecutiveFailures === 0) {
@@ -322,7 +332,7 @@ export class WebhookDispatcher {
     );
 
     try {
-      console.log(`📡 Dispatching TEST webhook to ${endpoint.url}`);
+      logger.info({ url: endpoint.url }, "📡 Dispatching TEST webhook");
 
       const response = await fetch(endpoint.url, {
         method: "POST",
@@ -346,11 +356,11 @@ export class WebhookDispatcher {
         $set: { lastSuccessAt: new Date(), consecutiveFailures: 0 },
       });
 
-      console.log(`✅ TEST Webhook SUCCESS`);
+      logger.info("✅ TEST Webhook SUCCESS");
       return true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`❌ TEST Webhook FAILURE: ${message}`);
+      logger.error({ message }, "❌ TEST Webhook FAILURE");
       throw error;
     }
   }
@@ -402,9 +412,9 @@ export class WebhookDispatcher {
             dispatched++;
           }
         } catch (err) {
-          console.error(
-            `❌ Error processing webhook for invoice ${invoice.invoiceId}:`,
-            err,
+          logger.error(
+            { invoiceId: invoice.invoiceId, err },
+            "❌ Error processing webhook",
           );
         }
       }

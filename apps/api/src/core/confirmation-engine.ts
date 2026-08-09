@@ -13,6 +13,9 @@ import { BlockchainProviderPool } from "../infra/provider-pool.js";
 import { NotificationService } from "../infra/notification-service.js";
 import { CryptoMath } from "./crypto-math.js";
 import * as Metrics from "../infra/metrics.js";
+import { childLogger } from "../infra/logger.js";
+
+const logger = childLogger("confirmation-engine");
 
 /**
  * 🔒 ConfirmationEngine
@@ -111,8 +114,13 @@ export class ConfirmationEngine {
             ].includes(invoice.cryptoCurrency));
 
         if (!isAssetMatch) {
-          console.warn(
-            `⚠️  Asset mismatch for ${invoice.invoiceId}: Received ${event.asset}, Expected ${invoice.cryptoCurrency}`,
+          logger.warn(
+            {
+              invoiceId: invoice.invoiceId,
+              received: event.asset,
+              expected: invoice.cryptoCurrency,
+            },
+            "⚠️  Asset mismatch",
           );
           return { matched: false } as const;
         }
@@ -309,8 +317,15 @@ export class ConfirmationEngine {
           }
         }
 
-        console.log(
-          `📦 Invoice ${invoice.invoiceId}: ${invoice.status} → ${newStatus} (${event.confirmations}/${invoice.requiredConfirmations} confirmations)`,
+        logger.info(
+          {
+            invoiceId: invoice.invoiceId,
+            from: invoice.status,
+            to: newStatus,
+            confirmations: event.confirmations,
+            required: invoice.requiredConfirmations,
+          },
+          "📦 Invoice status update",
         );
 
         return { matched: true, invoiceId: invoice.invoiceId, newStatus };
@@ -368,13 +383,20 @@ export class ConfirmationEngine {
         WebhookDispatcher.dispatch(invoice.invoiceId, webhookEvent);
       }
 
-      console.log(
-        `📦 Invoice ${invoice.invoiceId}: ${invoice.status} → ${newStatus} (${event.confirmations}/${invoice.requiredConfirmations} confirmations)`,
+      logger.info(
+        {
+          invoiceId: invoice.invoiceId,
+          from: invoice.status,
+          to: newStatus,
+          confirmations: event.confirmations,
+          required: invoice.requiredConfirmations,
+        },
+        "📦 Invoice status update",
       );
 
       return { matched: true, invoiceId: invoice.invoiceId, newStatus };
     } catch (err) {
-      console.error("❌ ConfirmationEngine Error:", err);
+      logger.error({ err }, "❌ ConfirmationEngine Error");
       return { matched: false };
     }
   }
@@ -486,10 +508,13 @@ export class ConfirmationEngine {
             });
           }
 
-          console.log(`⏰ Invoice ${invoice.invoiceId} expired.`);
+          logger.info({ invoiceId: invoice.invoiceId }, "⏰ Invoice expired");
           expired++;
         } catch (err) {
-          console.error(`❌ Error expiring invoice ${invoice.invoiceId}:`, err);
+          logger.error(
+            { invoiceId: invoice.invoiceId, err },
+            "❌ Error expiring invoice",
+          );
         }
       }
 
