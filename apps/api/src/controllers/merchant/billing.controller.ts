@@ -477,13 +477,25 @@ export const MerchantBillingController = {
         ? await User.findById(merchant.userId)
         : null;
 
-      // 6. Referral Bonus Payout (10% to the referrer, capped at $500 lifetime)
+      // 6. Referral Bonus Payout (tiered commission, capped at $500 lifetime)
       const MAX_REFERRAL_EARNING = 500;
       if (user && user.referredBy) {
-        const referralBonus = parseFloat((usdAmount * 0.1).toFixed(2));
-        if (referralBonus > 0) {
-          const referrer = await User.findById(user.referredBy);
-          if (referrer) {
+        const referrer = await User.findById(user.referredBy);
+        if (referrer) {
+          // Tiered commission rates
+          const tier = referrer.affiliateTier || "standard";
+          const commissionRates: Record<string, number> = {
+            standard: 0.1,
+            silver: 0.15,
+            gold: 0.2,
+            platinum: 0.25,
+          };
+          const commissionRate = commissionRates[tier] || 0.1;
+          const referralBonus = parseFloat(
+            (usdAmount * commissionRate).toFixed(2),
+          );
+
+          if (referralBonus > 0) {
             const cappedBonus = Math.min(
               referralBonus,
               Math.max(
@@ -496,6 +508,7 @@ export const MerchantBillingController = {
                 $inc: {
                   creditBalance: cappedBonus,
                   referralEarningsUsd: cappedBonus,
+                  monthlyReferralEarnings: cappedBonus,
                 },
               });
 
@@ -504,17 +517,23 @@ export const MerchantBillingController = {
                 userId: referrer._id,
               });
               if (referrerMerchant) {
+                const tierLabels: Record<string, string> = {
+                  standard: "Standard",
+                  silver: "Silver",
+                  gold: "Gold",
+                  platinum: "Platinum",
+                };
                 await NotificationService.create({
                   merchantId: referrerMerchant._id.toString(),
-                  title: "Affiliate Commission Received! 🎁",
-                  description: `You earned $${cappedBonus.toFixed(2)} from an affiliate top-up.`,
+                  title: "Affiliate Commission Received!",
+                  description: `You earned $${cappedBonus.toFixed(2)} (${tierLabels[tier] || "Standard"} tier, ${(commissionRate * 100).toFixed(0)}%) from an affiliate top-up.`,
                   type: "success",
                   link: "/dashboard/affiliates",
                 });
               }
 
               console.info(
-                `🎁 Affiliate Commission: User(${user.referredBy}) +$${cappedBonus} (From User(${user._id}))`,
+                `🎁 Affiliate Commission (${tier}): User(${user.referredBy}) +$${cappedBonus} at ${(commissionRate * 100).toFixed(0)}% (From User(${user._id}))`,
               );
             }
           }

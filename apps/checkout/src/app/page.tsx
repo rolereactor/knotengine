@@ -1,99 +1,120 @@
 "use client";
 
-import { CyberpunkBackground } from "@/components/CyberpunkBackground";
 import { motion } from "framer-motion";
-import { ArrowRight, AlertCircle } from "lucide-react";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  stripHtmlTags,
-  limitLength,
-  MAX_TEXT_LENGTH,
-} from "@qodinger/knot-types";
+import { Shield, Zap, Lock, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
-  const [invId, setInvId] = useState("");
-  const [error, setError] = useState("");
-  const router = useRouter();
-
-  const handleGo = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    const sanitized = limitLength(stripHtmlTags(invId.trim()), MAX_TEXT_LENGTH);
-
-    if (!sanitized) {
-      setError("Please enter a valid invoice ID");
-      return;
-    }
-
-    if (!sanitized.startsWith("inv_")) {
-      setError("Invoice ID must start with 'inv_'");
-      return;
-    }
-
-    if (sanitized.length < 7) {
-      setError("Invalid invoice ID format");
-      return;
-    }
-
-    router.push(`/checkout/${sanitized}`);
-  };
-
   return (
     <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center p-6">
-      <CyberpunkBackground />
+      {/* Background */}
+      <div className="fixed inset-0 bg-[#050505]" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.03)_0%,transparent_60%)]" />
 
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-center"
-      >
-        <h1 className="mb-6 text-6xl font-black tracking-tighter uppercase italic drop-shadow-[0_0_15px_rgba(157,0,255,0.4)]">
-          <span className="text-neon-purple">Knot</span>
-          <span className="text-white opacity-80">Engine</span>
-        </h1>
-        <p className="mb-12 text-sm font-bold tracking-[0.2em] uppercase opacity-40">
-          Non-Custodial Payment Infrastructure
-        </p>
+      <div className="relative z-10 flex flex-col items-center text-center">
+        {/* Logo */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+        >
+          <div className="mb-8 flex items-center justify-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white">
+              <span className="text-xl font-black text-black">⌘</span>
+            </div>
+            <span className="text-2xl font-bold tracking-tight text-white">
+              KnotEngine
+            </span>
+          </div>
+        </motion.div>
 
-        <form onSubmit={handleGo} className="group relative w-full max-w-sm">
-          <input
-            type="text"
-            placeholder="ENTER INVOICE ID (inv_...)"
-            value={invId}
-            onChange={(e) => {
-              setInvId(e.target.value);
-              setError("");
-            }}
-            maxLength={MAX_TEXT_LENGTH}
-            className="glass focus:border-neon-blue/50 w-full rounded-2xl border-white/5 bg-white/5 px-6 py-5 font-mono text-xs tracking-widest uppercase transition-all outline-none"
-          />
-          <button
-            type="submit"
-            className="bg-neon-blue absolute top-1/2 right-2 -translate-y-1/2 rounded-xl p-3 text-black transition-all hover:scale-110 active:scale-95"
+        {/* Heading */}
+        <motion.h1
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="max-w-lg text-4xl font-bold tracking-tight text-white"
+        >
+          Secure Crypto Checkout
+        </motion.h1>
+
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="mt-4 max-w-md text-sm text-zinc-400"
+        >
+          You&apos;ve reached the KnotEngine checkout portal. If you&apos;re
+          here to make a payment, ask the merchant for your payment link.
+        </motion.p>
+
+        {/* Feature badges */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-10 flex flex-wrap justify-center gap-4"
+        >
+          {[
+            {
+              icon: Shield,
+              label: "Non-Custodial",
+              desc: "Merchants receive crypto directly",
+            },
+            {
+              icon: Zap,
+              label: "Instant Settlement",
+              desc: "No waiting for confirmations",
+            },
+            {
+              icon: Lock,
+              label: "Zero Counterparty Risk",
+              desc: "Your keys, your rules",
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3"
+            >
+              <item.icon className="h-4 w-4 text-emerald-500" />
+              <div className="text-left">
+                <div className="text-xs font-semibold text-white">
+                  {item.label}
+                </div>
+                <div className="text-[10px] text-zinc-500">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* CTA */}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-12"
+        >
+          <Link
+            href={
+              process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:5052"
+            }
+            className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-white/10"
           >
-            <ArrowRight size={20} />
-          </button>
-        </form>
+            Go to Dashboard
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </Link>
+        </motion.div>
 
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-3 flex items-center justify-center gap-2 text-xs font-medium text-red-400"
-          >
-            <AlertCircle size={14} />
-            {error}
-          </motion.div>
-        )}
-
-        <div className="mt-12 flex justify-center gap-8 text-[10px] font-black tracking-widest uppercase opacity-20">
-          <span>No Middlemen</span>
-          <span>No Custody</span>
-          <span>Pure Code</span>
-        </div>
-      </motion.div>
+        {/* Footer tagline */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mt-16 text-[10px] font-black tracking-widest text-zinc-600 uppercase"
+        >
+          The Protocol for Commerce
+        </motion.p>
+      </div>
     </main>
   );
 }

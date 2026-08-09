@@ -172,6 +172,57 @@ describe("User Model", () => {
 
       expect(user.referredBy?.toString()).toBe(referredBy.toString());
     });
+
+    it("should default affiliate tier to standard", () => {
+      const user = new User({
+        oauthId: "email:tier@example.com",
+        email: "tier@example.com",
+      });
+
+      expect(user.affiliateTier).toBe("standard");
+    });
+
+    it("should allow setting affiliate tier", () => {
+      const user = new User({
+        oauthId: "email:gold@example.com",
+        email: "gold@example.com",
+        affiliateTier: "gold",
+      });
+
+      expect(user.affiliateTier).toBe("gold");
+    });
+
+    it("should default total referrals to 0", () => {
+      const user = new User({
+        oauthId: "email:noreferrals@example.com",
+        email: "noreferrals@example.com",
+      });
+
+      expect(user.totalReferrals).toBe(0);
+    });
+
+    it("should default monthly referral earnings to 0", () => {
+      const user = new User({
+        oauthId: "email:monthly@example.com",
+        email: "monthly@example.com",
+      });
+
+      expect(user.monthlyReferralEarnings).toBe(0);
+    });
+
+    it("should allow storing payout method", () => {
+      const user = new User({
+        oauthId: "email:payout@example.com",
+        email: "payout@example.com",
+        affiliatePayoutMethod: "crypto",
+        affiliatePayoutAddress: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      });
+
+      expect(user.affiliatePayoutMethod).toBe("crypto");
+      expect(user.affiliatePayoutAddress).toBe(
+        "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+      );
+    });
   });
 
   describe("Yield Accrual", () => {

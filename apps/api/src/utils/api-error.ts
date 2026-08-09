@@ -29,6 +29,20 @@ export type ErrorCode =
   | "api_key_not_found"
   // Webhook Endpoints
   | "webhook_endpoint_not_found"
+  // Payment Links
+  | "payment_link_not_found"
+  | "payment_link_expired"
+  | "payment_link_limit_reached"
+  // Donations
+  | "donation_not_found"
+  | "donation_expired"
+  | "donation_limit_reached"
+  // Affiliates
+  | "affiliate_not_found"
+  | "affiliate_payout_not_found"
+  | "affiliate_payout_insufficient_balance"
+  | "affiliate_payout_minimum_not_met"
+  | "affiliate_tier_not_eligible"
   // Team
   | "team_member_not_found"
   // Plans

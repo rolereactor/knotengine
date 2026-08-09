@@ -18,6 +18,10 @@ import { configRoutes } from "./routes/config.js";
 import { authRoutes } from "./routes/auth.js";
 import { uploadRoutes } from "./routes/upload.js";
 import { floatRoutes } from "./routes/float.js";
+import { paymentLinkRoutes } from "./routes/payment-links.js";
+import { donationRoutes } from "./routes/donations.js";
+import { affiliateRoutes } from "./routes/affiliates.js";
+import { whiteLabelRoutes } from "./routes/white-label.js";
 import { PriceOracle } from "./infra/price-feed.js";
 import { ConfirmationEngine } from "./core/confirmation-engine.js";
 import { WebhookDispatcher } from "./infra/webhook-dispatcher.js";
@@ -288,6 +292,10 @@ server.register(configRoutes);
 server.register(authRoutes);
 server.register(uploadRoutes);
 server.register(floatRoutes);
+server.register(paymentLinkRoutes);
+server.register(donationRoutes);
+server.register(affiliateRoutes);
+server.register(whiteLabelRoutes);
 
 // ──────────────────────────────────────────────
 // Price Oracle Endpoint (Phase 1)

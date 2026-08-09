@@ -12,6 +12,8 @@ import {
   Activity,
   Users,
   BarChart3,
+  Puzzle,
+  Paintbrush,
 } from "lucide-react";
 import {
   HomeIcon,
@@ -25,6 +27,7 @@ import {
   UserRoundCheckIcon,
   HandCoinsIcon,
   ChartBarIncreasingIcon,
+  LinkIcon,
 } from "lucide-animated";
 
 import {
@@ -50,11 +53,13 @@ const animatedIconsMap: Record<string, React.ElementType> = {
   Dashboard: HomeIcon,
   Analytics: ChartBarIncreasingIcon,
   Payments: CircleDollarSignIcon,
+  Solutions: LinkIcon,
   "Activity Log": ActivityIcon,
   Balances: DollarSignIcon,
   Billing: HandCoinsIcon,
   "Affiliate Program": UsersIcon,
   Developers: TerminalIcon,
+  "White Label": LinkIcon,
   Team: UserRoundCheckIcon,
   Settings: SettingsIcon,
   "Help & Support": MessageCircleIcon,
@@ -67,6 +72,7 @@ const navGroups = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
       { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
       { icon: CreditCard, label: "Payments", href: "/dashboard/payments" },
+      { icon: Puzzle, label: "Solutions", href: "/dashboard/solutions" },
       { icon: Activity, label: "Activity Log", href: "/dashboard/activity" },
       { icon: Wallet, label: "Balances", href: "/dashboard/balances" },
       { icon: Coins, label: "Billing", href: "/dashboard/billing" },
@@ -86,6 +92,11 @@ const navGroups = [
     label: "Developer",
     items: [
       { icon: Code2, label: "Developers", href: "/dashboard/developers" },
+      {
+        icon: Paintbrush,
+        label: "White Label",
+        href: "/dashboard/white-label",
+      },
     ],
   },
   {
