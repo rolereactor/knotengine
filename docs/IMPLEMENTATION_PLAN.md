@@ -4,7 +4,7 @@
 
 **Last Updated:** August 09, 2026
 **Status:** In Progress
-**Progress:** 0 / 97 items complete
+**Progress:** 33 / 97 items complete
 
 ---
 
@@ -21,75 +21,75 @@
 
 ### 1.1 Critical Fixes
 
-- [ ] **S1** Add `@fastify/helmet` for security headers (X-Content-Type-Options, X-Frame-Options, HSTS)
+- [x] **S1** Add `@fastify/helmet` for security headers (X-Content-Type-Options, X-Frame-Options, HSTS)
   - File: `apps/api/src/main.ts`
   - Command: `pnpm add @fastify/helmet`
   - Verify: `curl -I http://localhost:5050/v1/price/BTC | grep x-content-type`
 
-- [ ] **S2** Lock Swagger docs in production (`/docs` returns 404 when `NODE_ENV=production`)
+- [x] **S2** Lock Swagger docs in production (`/docs` returns 404 when `NODE_ENV=production`)
   - File: `apps/api/src/main.ts:103-123`
   - Wrap in `if (process.env.NODE_ENV !== "production")`
 
-- [ ] **S3** Replace `!==` with `safeCompare()` for webhook signature verification
+- [x] **S3** Replace `!==` with `safeCompare()` for webhook signature verification
   - File: `apps/api/src/controllers/webhooks.controller.ts:89`
   - Import from `src/utils/crypto.ts`
 
-- [ ] **S4** Add `requireAuth` to `POST /v1/merchants/promo/generate`
+- [x] **S4** Add `requireAuth` to `POST /v1/merchants/promo/generate`
   - File: `apps/api/src/routes/merchants.ts:481-494`
 
-- [ ] **S5** Strip `pay_address`, `tx_hash`, merchant details from public `GET /v1/invoices/:id`
+- [x] **S5** Strip `pay_address`, `tx_hash`, merchant details from public `GET /v1/invoices/:id`
   - File: `apps/api/src/controllers/invoices.controller.ts:388-496`
   - Check `req.user || req.merchant` before including sensitive fields
 
 ### 1.2 Input Validation
 
-- [ ] **S6** Add Zod schema for `GET /v1/invoices` query params (max `limit=100`)
+- [x] **S6** Add Zod schema for `GET /v1/invoices` query params (max `limit=100`)
   - File: `apps/api/src/routes/invoices.ts:103-109`
 
-- [ ] **S7** Change donation `currency` from `z.string()` to `z.enum(SUPPORTED_CURRENCIES)`
+- [x] **S7** Change donation `currency` from `z.string()` to `z.enum(SUPPORTED_CURRENCIES)`
   - File: `apps/api/src/routes/donations.ts:521`
 
-- [ ] **S8** Add per-IP rate limit (10/min) on `POST /v1/payment-links/:linkId/invoice`
+- [x] **S8** Add per-IP rate limit (10/min) on `POST /v1/payment-links/:linkId/invoice`
   - File: `apps/api/src/routes/payment-links.ts:432`
 
-- [ ] **S9** Add auth to `POST /v1/donations/:id/alerts/:msgId/read`
+- [x] **S9** Add auth to `POST /v1/donations/:id/alerts/:msgId/read`
   - File: `apps/api/src/routes/donations.ts:883`
 
 ### 1.3 Null Safety
 
-- [ ] **S10** Add null/undefined guard to `safeCompare()`
+- [x] **S10** Add null/undefined guard to `safeCompare()`
   - File: `apps/api/src/utils/crypto.ts:3-5`
   - Add: `if (!a || !b) return false;`
 
-- [ ] **S11** Validate `status` parameter in `apiError()` (must be 4xx/5xx)
+- [x] **S11** Validate `status` parameter in `apiError()` (must be 4xx/5xx)
   - File: `apps/api/src/utils/api-error.ts:82-98`
 
 ### 1.4 Middleware
 
-- [ ] **S12** Move dynamic `import()` to top-level static import in merchant-access middleware
+- [x] **S12** Move dynamic `import()` to top-level static import in merchant-access middleware
   - File: `apps/api/src/middleware/merchant-access.middleware.ts:62-63`
 
-- [ ] **S13** Remove duplicate `escapeRegExp()` — keep only in `src/utils/escape-regexp.ts`
+- [x] **S13** Remove duplicate `escapeRegExp()` — keep only in `src/utils/escape-regexp.ts`
   - Files: `routes/merchants.ts:35-37`, `middleware/auth.middleware.ts:13-15`
 
-- [ ] **S14** Only bypass localhost rate limit when `NODE_ENV !== "production"`
+- [x] **S14** Only bypass localhost rate limit when `NODE_ENV !== "production"`
   - File: `apps/api/src/middleware/rate-limit.middleware.ts:211`
 
 ### 1.5 Database Schema
 
-- [ ] **S15** Fix `PaymentLink.redirectUrl` type from `Date` to `string`
+- [x] **S15** Fix `PaymentLink.redirectUrl` type from `Date` to `string`
   - File: `packages/database/src/models/payment-link.model.ts:33`
 
-- [ ] **S16** Add `unique: true` to `ApiKey.keyId`
+- [x] **S16** Add `unique: true` to `ApiKey.keyId`
   - File: `packages/database/src/models/api-key.model.ts:46`
 
-- [ ] **S17** Add `unique: true` to `WebhookEndpoint.endpointId`
+- [x] **S17** Add `unique: true` to `WebhookEndpoint.endpointId`
   - File: `packages/database/src/models/webhook-endpoint.model.ts:46`
 
-- [ ] **S18** Add compound indexes to Merchant schema (`oauthId+isActive+isDeleted`, `userId+isActive+isDeleted`)
+- [x] **S18** Add compound indexes to Merchant schema (`oauthId+isActive+isDeleted`, `userId+isActive+isDeleted`)
   - File: `packages/database/src/models/merchant.model.ts`
 
-- [ ] **S19** Remove TTL index on `PaymentLink.expiresAt` (use `isActive` instead)
+- [x] **S19** Remove TTL index on `PaymentLink.expiresAt` (use `isActive` instead)
   - File: `packages/database/src/models/payment-link.model.ts:62`
 
 ---
@@ -98,23 +98,23 @@
 
 ### 2.1 Structured Logging
 
-- [ ] **O1** Create `apps/api/src/infra/logger.ts` with pino
+- [x] **O1** Create `apps/api/src/infra/logger.ts` with pino
   - Command: `pnpm add pino pino-pretty`
   - Export `logger` + child loggers per module
 
-- [ ] **O2** Replace `console.log` in `confirmation-engine.ts` → `confirmationLogger.info()`
+- [x] **O2** Replace `console.log` in `confirmation-engine.ts` → `confirmationLogger.info()`
   - File: `apps/api/src/core/confirmation-engine.ts`
 
-- [ ] **O3** Replace `console.log` in `webhook-dispatcher.ts` → `webhookLogger.info()`
+- [x] **O3** Replace `console.log` in `webhook-dispatcher.ts` → `webhookLogger.info()`
   - File: `apps/api/src/infra/webhook-dispatcher.ts`
 
-- [ ] **O4** Replace `console.warn` in `redis-client.ts` → `logger.warn()`
+- [x] **O4** Replace `console.warn` in `redis-client.ts` → `logger.warn()`
   - File: `apps/api/src/infra/redis-client.ts`
 
-- [ ] **O5** Replace `console.log` in `main.ts` → `logger.info()`
+- [x] **O5** Replace `console.log` in `main.ts` → `logger.info()`
   - File: `apps/api/src/main.ts`
 
-- [ ] **O6** Replace `console.warn` in `price-feed.ts` → `logger.warn()`
+- [x] **O6** Replace `console.warn` in `price-feed.ts` → `logger.warn()`
   - File: `apps/api/src/core/price-feed.ts`
 
 ### 2.2 Metrics
@@ -149,10 +149,10 @@
 - [ ] **P4** Fetch Merchant once in ConfirmationEngine (currently queries twice)
   - File: `apps/api/src/core/confirmation-engine.ts:99,325`
 
-- [ ] **P5** Replace 4 separate `countDocuments` in webhook stats with single `$facet` aggregation
+- [x] **P5** Replace 4 separate `countDocuments` in webhook stats with single `$facet` aggregation
   - File: `apps/api/src/routes/merchants.ts:726-740`
 
-- [ ] **P6** Add compound index `DonationSchema.index({ slug: 1, isActive: 1 })`
+- [x] **P6** Add compound index `DonationSchema.index({ slug: 1, isActive: 1 })`
   - File: `packages/database/src/models/donation.model.ts`
 
 - [ ] **P7** Add `DonationPageSchema.index({ merchantId: 1, createdAt: -1 })`
@@ -177,7 +177,7 @@
 
 ### 3.5 Cleanup
 
-- [ ] **P12** Use `$eq` instead of `$regex` for OAuth ID matching in auth middleware
+- [x] **P12** Use `$eq` instead of `$regex` for OAuth ID matching in auth middleware
   - File: `apps/api/src/middleware/auth.middleware.ts:53`
   - Avoids regex injection risk entirely
 
@@ -194,7 +194,7 @@
 - [ ] **D2** Add response examples to all route schemas
   - Files: All files in `apps/api/src/routes/`
 
-- [ ] **D3** Add `X-Request-Id` header to all responses (UUID for debugging)
+- [x] **D3** Add `X-Request-Id` header to all responses (UUID for debugging)
   - File: `apps/api/src/main.ts` (Fastify request ID hook)
 
 ### 4.2 SDK
@@ -213,13 +213,13 @@
 - [ ] **D7** Add `doc_url` to all `apiError()` calls (currently some are missing)
   - Files: All route files using `apiError()`
 
-- [ ] **D8** Add error code constants file (`src/utils/error-codes.ts`)
+- [x] **D8** Add error code constants file (`src/utils/error-codes.ts`)
   - File: `apps/api/src/utils/error-codes.ts` (new)
   - Centralize all error codes for IDE autocomplete
 
 ### 4.4 Testing
 
-- [ ] **D9** Add test for `safeCompare` edge cases (undefined, empty, mismatched lengths)
+- [x] **D9** Add test for `safeCompare` edge cases (undefined, empty, mismatched lengths)
   - File: `apps/api/tests/null-safety.test.ts` (new)
 
 - [ ] **D10** Add integration test for rate limiting behavior
@@ -378,7 +378,7 @@
   - File: `apps/api/src/core/confirmation-engine.ts:97-376`
   - Extract shared logic into private method
 
-- [ ] **Q3** Remove duplicate `escapeRegExp` function
+- [x] **Q3** Remove duplicate `escapeRegExp` function
   - Files: `routes/merchants.ts:35-37`, `middleware/auth.middleware.ts:13-15`
 
 ### 8.2 Type Safety
@@ -408,15 +408,15 @@
 
 | Section                      | Total   | Complete | Remaining |
 | ---------------------------- | ------- | -------- | --------- |
-| 1. Security Hardening        | 19      | 0        | 19        |
-| 2. Observability & Logging   | 8       | 0        | 8         |
-| 3. Performance & Scalability | 12      | 0        | 12        |
-| 4. Developer Experience      | 10      | 0        | 10        |
+| 1. Security Hardening        | 19      | 19       | 0         |
+| 2. Observability & Logging   | 8       | 6        | 2         |
+| 3. Performance & Scalability | 12      | 3        | 9         |
+| 4. Developer Experience      | 10      | 3        | 7         |
 | 5. Merchant UX               | 14      | 0        | 14        |
 | 6. Infrastructure            | 8       | 0        | 8         |
 | 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
-| 8. Code Quality              | 8       | 0        | 8         |
-| **Total**                    | **105** | **0**    | **105**   |
+| 8. Code Quality              | 8       | 1        | 7         |
+| **Total**                    | **105** | **33**   | **72**    |
 
 ---
 
