@@ -37,7 +37,60 @@ export const InvoicesController = {
         metadata,
         description,
         is_testnet,
+        line_items,
       } = request.body;
+
+      // Line items: calculate total from line items if provided
+      let resolvedAmountUsd = amount_usd;
+      let resolvedLineItems:
+        | {
+            description: string;
+            quantity: number;
+            unitPrice: number;
+            total: number;
+          }[]
+        | undefined;
+
+      if (Array.isArray(line_items) && line_items.length > 0) {
+        resolvedLineItems = line_items.map(
+          (item: {
+            description: string;
+            quantity: number;
+            unit_price: number;
+          }) => {
+            const quantity = Number(item.quantity);
+            const unitPrice = Number(item.unit_price);
+            if (!item.description || quantity < 0 || unitPrice < 0) {
+              throw new Error(
+                "Invalid line item: description required, quantity and unit_price must be non-negative",
+              );
+            }
+            return {
+              description: item.description,
+              quantity,
+              unitPrice,
+              total: Math.round(quantity * unitPrice * 100) / 100,
+            };
+          },
+        );
+
+        const lineItemsTotal = resolvedLineItems.reduce(
+          (sum, item) => sum + item.total,
+          0,
+        );
+
+        if (amount_usd && Math.abs(amount_usd - lineItemsTotal) > 0.01) {
+          return apiError(
+            reply,
+            400,
+            "line_items_mismatch",
+            `amount_usd (${amount_usd}) does not match line items total (${lineItemsTotal}). Omit amount_usd to auto-calculate from line items.`,
+            "amount_usd",
+          );
+        }
+
+        resolvedAmountUsd = lineItemsTotal;
+      }
 
       // Idempotency: if client sends Idempotency-Key, return cached response on replay
       const idempotencyKey = request.headers["idempotency-key"] as
@@ -124,7 +177,7 @@ export const InvoicesController = {
         const { allowed: volumeAllowed, limit: volumeLimit } = checkPlanLimit(
           effectivePlan,
           "maxMonthlyVolume",
-          currentVolume + amount_usd,
+          currentVolume + resolvedAmountUsd,
         );
 
         if (!volumeAllowed) {
@@ -153,7 +206,7 @@ export const InvoicesController = {
 
       // Transparent Pricing: Customer pays exact market rate
       const customerPrice = marketPrice;
-      const cryptoAmount = CryptoMath.divide(amount_usd, customerPrice);
+      const cryptoAmount = CryptoMath.divide(resolvedAmountUsd, customerPrice);
 
       // Derive a unique payment address
       let payAddress: string;
@@ -162,7 +215,7 @@ export const InvoicesController = {
       const minInvoiceAmount = parseFloat(
         process.env.MIN_INVOICE_AMOUNT || "1.00",
       );
-      if (amount_usd < minInvoiceAmount) {
+      if (resolvedAmountUsd < minInvoiceAmount) {
         return apiError(
           reply,
           400,
@@ -270,11 +323,14 @@ export const InvoicesController = {
 
       let feeUsd = 0;
       let feeCrypto = 0;
-      let totalAmountUsd = amount_usd;
+      let totalAmountUsd = resolvedAmountUsd;
       let totalCryptoAmount = cryptoAmount;
 
       // A. Calculate Base Platform Fee
-      const rawBaseFeeUsd = CryptoMath.multiply(amount_usd, activeFeeRate);
+      const rawBaseFeeUsd = CryptoMath.multiply(
+        resolvedAmountUsd,
+        activeFeeRate,
+      );
       feeUsd = CryptoMath.toNumber(Math.max(rawBaseFeeUsd, minFeeUsd), 2);
 
       // B. Determine logic based on Fee Responsibility
@@ -282,20 +338,20 @@ export const InvoicesController = {
 
       if (feePayer === "client") {
         // Add the fee to the invoice amount (pass to client as a hidden spread)
-        totalAmountUsd = CryptoMath.add(amount_usd, feeUsd);
+        totalAmountUsd = CryptoMath.add(resolvedAmountUsd, feeUsd);
 
         // Recalculate the crypto amount the client actually needs to pay
         totalCryptoAmount = CryptoMath.divide(totalAmountUsd, customerPrice);
       } else {
         // Merchant pays the fee out of their own balance (transparent)
-        totalAmountUsd = amount_usd;
+        totalAmountUsd = resolvedAmountUsd;
         totalCryptoAmount = cryptoAmount;
       }
 
       // feeCrypto is just for tracking/display relative to the payment
       feeCrypto = CryptoMath.divide(
         CryptoMath.multiply(feeUsd, totalCryptoAmount),
-        amount_usd,
+        resolvedAmountUsd,
       );
 
       // 7. Create the invoice
@@ -307,6 +363,7 @@ export const InvoicesController = {
         merchantId: merchant._id,
         invoiceId,
         amountUsd: totalAmountUsd,
+        ...(resolvedLineItems ? { lineItems: resolvedLineItems } : {}),
         cryptoAmount: totalCryptoAmount,
         cryptoCurrency: currency,
         payAddress,
@@ -350,6 +407,7 @@ export const InvoicesController = {
         object: "invoice",
         invoice_id: invoice.invoiceId,
         amount_usd: invoice.amountUsd,
+        ...(resolvedLineItems ? { line_items: resolvedLineItems } : {}),
         crypto_amount: invoice.cryptoAmount,
         crypto_currency: invoice.cryptoCurrency,
         pay_address: invoice.payAddress,
@@ -461,6 +519,7 @@ export const InvoicesController = {
       object: "invoice",
       invoice_id: invoice.invoiceId,
       amount_usd: invoice.amountUsd,
+      ...(invoice.lineItems ? { line_items: invoice.lineItems } : {}),
       crypto_amount: invoice.cryptoAmount,
       crypto_amount_received: CryptoMath.toFixed(
         invoice.cryptoAmountReceived || 0,
@@ -558,6 +617,7 @@ export const InvoicesController = {
         object: "invoice",
         invoice_id: inv.invoiceId,
         amount_usd: inv.amountUsd,
+        ...(inv.lineItems ? { line_items: inv.lineItems } : {}),
         crypto_amount: inv.cryptoAmount,
         crypto_amount_received: CryptoMath.toFixed(
           inv.cryptoAmountReceived || 0,
@@ -678,6 +738,7 @@ export const InvoicesController = {
     const rows = invoices.map((inv) => ({
       invoice_id: inv.invoiceId,
       amount_usd: inv.amountUsd,
+      line_items: inv.lineItems || null,
       crypto_amount: inv.cryptoAmount,
       crypto_amount_received: inv.cryptoAmountReceived || 0,
       crypto_currency: inv.cryptoCurrency,

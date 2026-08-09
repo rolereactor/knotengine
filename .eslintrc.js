@@ -20,7 +20,37 @@ module.exports = {
     "no-console": "warn",
 
     // Q7: Convention — always use safeCompare (timing-safe) over === when comparing
-    // secrets, API keys, tokens, or HMAC signatures. No automated rule yet (informational).
+    // secrets, API keys, tokens, or HMAC signatures.
+    // Use `safeCompare()` from src/utils/crypto.ts (wraps crypto.timingSafeEqual).
+    // The no-restricted-syntax rule below flags bare === comparisons on common
+    // secret-like identifiers as a reminder. This is a convention guard, not exhaustive.
+    "no-restricted-syntax": [
+      "warn",
+      {
+        selector:
+          "BinaryExpression[operator='==='][left.type='Identifier'][left.name=/^(secret|apiKey|token|hmac|signature|internalSecret)$/]",
+        message:
+          "Use safeCompare() instead of === for secret/token comparisons to prevent timing attacks.",
+      },
+      {
+        selector:
+          "BinaryExpression[operator='==='][right.type='Identifier'][right.name=/^(secret|apiKey|token|hmac|signature|internalSecret)$/]",
+        message:
+          "Use safeCompare() instead of === for secret/token comparisons to prevent timing attacks.",
+      },
+      {
+        selector:
+          "BinaryExpression[operator='!=='][left.type='Identifier'][left.name=/^(secret|apiKey|token|hmac|signature|internalSecret)$/]",
+        message:
+          "Use !safeCompare() instead of !== for secret/token comparisons to prevent timing attacks.",
+      },
+      {
+        selector:
+          "BinaryExpression[operator='!=='][right.type='Identifier'][right.name=/^(secret|apiKey|token|hmac|signature|internalSecret)$/]",
+        message:
+          "Use !safeCompare() instead of !== for secret/token comparisons to prevent timing attacks.",
+      },
+    ],
   },
   env: {
     node: true,
@@ -47,6 +77,7 @@ module.exports = {
       ],
       rules: {
         "no-console": "off",
+        "no-restricted-syntax": "off",
       },
     },
   ],

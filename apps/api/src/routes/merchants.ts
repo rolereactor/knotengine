@@ -1,4 +1,5 @@
 import {
+  Invoice,
   Merchant,
   User,
   WebhookDelivery,
@@ -1190,6 +1191,321 @@ export async function merchantRoutes(app: FastifyInstance) {
       },
     },
     MerchantTeamController.setDefaultMerchant,
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/analytics/revenue — Daily Revenue Summary
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/analytics/revenue",
+    {
+      preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+
+      const { from, to } = request.query as { from?: string; to?: string };
+
+      const now = new Date();
+      const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const startDate = from ? new Date(from) : defaultFrom;
+      const endDate = to ? new Date(to) : now;
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Invalid date format. Use ISO 8601 datetime strings.",
+        );
+      }
+
+      if (startDate >= endDate) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "The 'from' date must be before the 'to' date.",
+        );
+      }
+
+      const [dailyRevenue, totals] = await Promise.all([
+        Invoice.aggregate<{ _id: string; revenue: number; count: number }>([
+          {
+            $match: {
+              merchantId: merchant._id,
+              status: "confirmed",
+              "metadata.isTestnet": { $ne: true },
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+              },
+              revenue: { $sum: "$amountUsd" },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        Invoice.aggregate<{ totalRevenue: number; totalInvoices: number }>([
+          {
+            $match: {
+              merchantId: merchant._id,
+              status: "confirmed",
+              "metadata.isTestnet": { $ne: true },
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$amountUsd" },
+              totalInvoices: { $sum: 1 },
+            },
+          },
+        ]),
+      ]);
+
+      const summary =
+        totals.length > 0 ? totals[0] : { totalRevenue: 0, totalInvoices: 0 };
+
+      return reply.send({
+        object: "analytics_revenue",
+        period: {
+          from: startDate.toISOString(),
+          to: endDate.toISOString(),
+        },
+        totals: {
+          revenue: parseFloat(summary.totalRevenue.toFixed(2)),
+          invoice_count: summary.totalInvoices,
+          average_per_invoice:
+            summary.totalInvoices > 0
+              ? parseFloat(
+                  (summary.totalRevenue / summary.totalInvoices).toFixed(2),
+                )
+              : 0,
+        },
+        daily: dailyRevenue.map(
+          (d: { _id: string; revenue: number; count: number }) => ({
+            date: d._id,
+            revenue: parseFloat(d.revenue.toFixed(2)),
+            invoice_count: d.count,
+          }),
+        ),
+      });
+    },
+  );
+
+  // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/analytics/charts — Chart Data + Payment Method Breakdown
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/analytics/charts",
+    {
+      preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          granularity: z.enum(["daily", "weekly", "monthly"]).default("daily"),
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+
+      const { granularity, from, to } = request.query as {
+        granularity: string;
+        from?: string;
+        to?: string;
+      };
+
+      const now = new Date();
+      const defaultFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      const startDate = from ? new Date(from) : defaultFrom;
+      const endDate = to ? new Date(to) : now;
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Invalid date format. Use ISO 8601 datetime strings.",
+        );
+      }
+
+      if (startDate >= endDate) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "The 'from' date must be before the 'to' date.",
+        );
+      }
+
+      let groupFormat: string;
+      let stepMs: number;
+
+      if (granularity === "weekly") {
+        groupFormat = "%Y-W%V";
+        stepMs = 7 * 24 * 60 * 60 * 1000;
+      } else if (granularity === "monthly") {
+        groupFormat = "%Y-%m";
+        stepMs = 30 * 24 * 60 * 60 * 1000;
+      } else {
+        groupFormat = "%Y-%m-%d";
+        stepMs = 24 * 60 * 60 * 1000;
+      }
+
+      const [chartData, paymentBreakdown] = await Promise.all([
+        Invoice.aggregate<{ _id: string; revenue: number; count: number }>([
+          {
+            $match: {
+              merchantId: merchant._id,
+              status: "confirmed",
+              "metadata.isTestnet": { $ne: true },
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: {
+                $dateToString: { format: groupFormat, date: "$createdAt" },
+              },
+              revenue: { $sum: "$amountUsd" },
+              count: { $sum: 1 },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]),
+        Invoice.aggregate<{
+          _id: string;
+          revenue: number;
+          count: number;
+          crypto_amount: number;
+        }>([
+          {
+            $match: {
+              merchantId: merchant._id,
+              status: "confirmed",
+              "metadata.isTestnet": { $ne: true },
+              createdAt: { $gte: startDate, $lte: endDate },
+            },
+          },
+          {
+            $group: {
+              _id: "$cryptoCurrency",
+              revenue: { $sum: "$amountUsd" },
+              count: { $sum: 1 },
+              crypto_amount: { $sum: "$cryptoAmount" },
+            },
+          },
+          { $sort: { revenue: -1 } },
+        ]),
+      ]);
+
+      // Fill gaps so charts render smoothly
+      const filledChartData: {
+        label: string;
+        revenue: number;
+        invoice_count: number;
+      }[] = [];
+      const totalSteps = Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / stepMs,
+      );
+
+      for (let i = 0; i < totalSteps; i++) {
+        const d = new Date(startDate.getTime() + i * stepMs);
+        let key: string;
+        let label: string;
+
+        if (granularity === "weekly") {
+          const yearStart = new Date(d.getFullYear(), 0, 1);
+          const weekNum = Math.ceil(
+            ((d.getTime() - yearStart.getTime()) / 86400000 +
+              yearStart.getDay() +
+              1) /
+              7,
+          );
+          key = `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+          label = `W${weekNum} ${d.getFullYear()}`;
+        } else if (granularity === "monthly") {
+          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          label = d.toLocaleDateString([], { month: "short", year: "numeric" });
+        } else {
+          key = d.toISOString().slice(0, 10);
+          label = d.toLocaleDateString([], { month: "short", day: "numeric" });
+        }
+
+        const match = chartData.find(
+          (r: { _id: string; revenue: number; count: number }) => r._id === key,
+        );
+        filledChartData.push({
+          label,
+          revenue: match ? parseFloat(match.revenue.toFixed(2)) : 0,
+          invoice_count: match ? match.count : 0,
+        });
+      }
+
+      const paymentMethods = paymentBreakdown.map(
+        (p: {
+          _id: string;
+          revenue: number;
+          count: number;
+          crypto_amount: number;
+        }) => ({
+          currency: p._id,
+          revenue: parseFloat(p.revenue.toFixed(2)),
+          invoice_count: p.count,
+          crypto_amount: parseFloat(p.crypto_amount.toFixed(8)),
+          percentage:
+            paymentBreakdown.reduce(
+              (sum: number, x: { revenue: number }) => sum + x.revenue,
+              0,
+            ) > 0
+              ? parseFloat(
+                  (
+                    (p.revenue /
+                      paymentBreakdown.reduce(
+                        (sum: number, x: { revenue: number }) =>
+                          sum + x.revenue,
+                        0,
+                      )) *
+                    100
+                  ).toFixed(2),
+                )
+              : 0,
+        }),
+      );
+
+      return reply.send({
+        object: "analytics_charts",
+        period: {
+          from: startDate.toISOString(),
+          to: endDate.toISOString(),
+          granularity,
+        },
+        series: filledChartData,
+        payment_methods: paymentMethods,
+      });
+    },
   );
 
   // ──────────────────────────────────────────────

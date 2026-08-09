@@ -21,6 +21,7 @@ export type ErrorCode =
   | "below_minimum_amount"
   | "testnet_currency_unsupported"
   | "address_config_missing"
+  | "line_items_mismatch"
   // Merchants
   | "merchant_not_found"
   | "merchant_suspended"

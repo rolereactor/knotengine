@@ -378,3 +378,81 @@ export function instrumentMongoose(): void {
     });
   });
 }
+
+// ──────────────────────────────────────────────
+// Alert Threshold Constants & Recommended Rules
+// ──────────────────────────────────────────────
+// Threshold values used by Prometheus alerting rules.
+// See: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+
+export const ALERT_THRESHOLDS = {
+  /** Invoice creation p95 latency (seconds) above this triggers a warning */
+  invoiceLatencyP95: 2,
+  /** Webhook DLQ size above 0 for 10m triggers a warning */
+  webhookDLQBacklog: 1,
+  /** Total active (pending) invoices above this triggers a warning */
+  activeInvoicesHigh: 500,
+  /** DB query p95 latency (seconds) above this triggers a warning */
+  dbQueryLatencyP95: 0.5,
+  /** Price fetch latency p95 (seconds) above this triggers a warning */
+  priceFetchLatencyP95: 1,
+} as const;
+
+/**
+ * Recommended Prometheus alerting rules for KnotEngine.
+ *
+ * ```yaml
+ * groups:
+ *   - name: knotengine
+ *     rules:
+ *       - alert: InvoiceCreationLatencyHigh
+ *         expr: histogram_quantile(0.95, rate(knotengine_invoice_creation_latency_seconds_bucket[5m])) > 2
+ *         for: 5m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "Invoice creation latency is high"
+ *
+ *       - alert: WebhookDLQNotEmpty
+ *         expr: knotengine_webhook_dlq_size > 0
+ *         for: 10m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "Webhook dead letter queue has unprocessed jobs"
+ *
+ *       - alert: ActiveInvoicesHigh
+ *         expr: sum(knotengine_active_invoices) > 500
+ *         for: 15m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "High number of active invoices (possible stall)"
+ *
+ *       - alert: BlockchainProviderDown
+ *         expr: knotengine_provider_health == 0
+ *         for: 5m
+ *         labels: { severity: critical }
+ *         annotations:
+ *           summary: "Blockchain provider is unhealthy"
+ *
+ *       - alert: DatabaseQueryLatencyHigh
+ *         expr: histogram_quantile(0.95, rate(knotengine_db_query_latency_seconds_bucket[5m])) > 0.5
+ *         for: 10m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "Database query latency is high"
+ *
+ *       - alert: PriceFetchLatencyHigh
+ *         expr: histogram_quantile(0.95, rate(knotengine_price_fetch_latency_seconds_bucket[5m])) > 1
+ *         for: 10m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "Price oracle latency is high"
+ *
+ *       - alert: PaymentConfirmationSlow
+ *         expr: histogram_quantile(0.95, rate(knotengine_payment_confirmation_time_seconds_bucket[5m])) > 1200
+ *         for: 15m
+ *         labels: { severity: warning }
+ *         annotations:
+ *           summary: "Payment confirmations are slow (>20min p95)"
+ * ```
+ */
+export const RECOMMENDED_ALERT_RULES = ALERT_THRESHOLDS;

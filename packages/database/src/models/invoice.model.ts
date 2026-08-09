@@ -15,11 +15,20 @@ export type InvoiceStatus =
   | "partially_paid"
   | "overpaid";
 
+export interface ILineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
 export interface IInvoice extends Document {
   merchantId: mongoose.Types.ObjectId;
   /** Human-readable invoice identifier (e.g. inv_abc123) */
   invoiceId: string;
   amountUsd: number;
+  /** Optional line items for itemized invoices */
+  lineItems?: ILineItem[];
   cryptoAmount: number;
   cryptoAmountReceived: number;
   /** Last received amount for incremental tracking */
@@ -70,6 +79,17 @@ const InvoiceSchema: Schema = new Schema(
     },
     invoiceId: { type: String, required: true, unique: true },
     amountUsd: { type: Number, required: true },
+    lineItems: {
+      type: [
+        {
+          description: { type: String, required: true },
+          quantity: { type: Number, required: true, min: 0 },
+          unitPrice: { type: Number, required: true, min: 0 },
+          total: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: undefined,
+    },
     cryptoAmount: { type: Number, required: true },
     cryptoAmountReceived: { type: Number, default: 0 },
     lastReceivedAmount: { type: Number },

@@ -14,6 +14,7 @@ import { NotificationService } from "../infra/notification-service.js";
 import { CryptoMath } from "./crypto-math.js";
 import * as Metrics from "../infra/metrics.js";
 import { childLogger } from "../infra/logger.js";
+import { EmailService } from "../infra/email-service.js";
 
 const logger = childLogger("confirmation-engine");
 
@@ -285,6 +286,31 @@ export class ConfirmationEngine {
               isTestnet,
             );
 
+            // U8: Send email notification for confirmed invoice
+            if (merchant.emailNotifications?.paymentConfirmed !== false) {
+              const merchantUser = merchant.userId
+                ? await User.findById(merchant.userId)
+                : null;
+              if (merchantUser?.email) {
+                const merchantName =
+                  merchant.name || merchantUser.email.split("@")[0];
+                EmailService.sendPaymentAlert({
+                  to: merchantUser.email,
+                  merchantName,
+                  invoiceId: invoice.invoiceId,
+                  amount: invoice.amountUsd.toFixed(2),
+                  currency: "USD",
+                  status: "confirmed",
+                  checkoutUrl: `${process.env.DASHBOARD_URL || "http://localhost:5052"}/dashboard/payments`,
+                }).catch((err) =>
+                  logger.error(
+                    { err, invoiceId: invoice.invoiceId },
+                    "❌ Failed to send confirmed email",
+                  ),
+                );
+              }
+            }
+
             const user = merchant.userId
               ? await User.findById(merchant.userId)
               : null;
@@ -505,6 +531,35 @@ export class ConfirmationEngine {
               link: "/dashboard/payments",
               meta: { invoiceId: invoice.invoiceId, isTestnet },
             });
+
+            // U8: Send email notification for expired invoice
+            const expiredMerchant = await Merchant.findById(
+              invoice.merchantId,
+            ).populate("userId");
+            if (
+              expiredMerchant &&
+              expiredMerchant.emailNotifications?.paymentExpired !== false
+            ) {
+              const expiredUser = expiredMerchant.userId as any;
+              if (expiredUser?.email) {
+                const merchantName =
+                  expiredMerchant.name || expiredUser.email.split("@")[0];
+                EmailService.sendPaymentAlert({
+                  to: expiredUser.email,
+                  merchantName,
+                  invoiceId: invoice.invoiceId,
+                  amount: "0.00",
+                  currency: invoice.cryptoCurrency || "USD",
+                  status: "expired",
+                  checkoutUrl: `${process.env.DASHBOARD_URL || "http://localhost:5052"}/dashboard/payments`,
+                }).catch((err) =>
+                  logger.error(
+                    { err, invoiceId: invoice.invoiceId },
+                    "❌ Failed to send expired email",
+                  ),
+                );
+              }
+            }
           }
 
           logger.info({ invoiceId: invoice.invoiceId }, "⏰ Invoice expired");

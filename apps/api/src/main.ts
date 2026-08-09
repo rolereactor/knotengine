@@ -24,22 +24,24 @@ import { paymentLinkRoutes } from "./routes/payment-links.js";
 import { donationRoutes } from "./routes/donations.js";
 import { affiliateRoutes } from "./routes/affiliates.js";
 import { whiteLabelRoutes } from "./routes/white-label.js";
+import { healthRoutes } from "./routes/health.js";
 import { PriceOracle } from "./infra/price-feed.js";
 import { ConfirmationEngine } from "./core/confirmation-engine.js";
 import { WebhookDispatcher } from "./infra/webhook-dispatcher.js";
 import { SubscriptionBilling } from "./core/subscription-billing.js";
 import { FloatManager } from "./core/float-manager.js";
 import { Currency } from "@qodinger/knot-types";
-import { connectToDatabase, mongoose } from "@qodinger/knot-database";
+import { connectToDatabase } from "@qodinger/knot-database";
 import { SocketService } from "./infra/socket-service.js";
 import { WebhookQueue } from "./infra/webhook-queue.js";
 import { RedisClient } from "./infra/redis-client.js";
 import { ScheduledJobs } from "./infra/scheduled-jobs.js";
-import { isSelfHosted } from "./core/self-hosted-mode.js";
+
 import * as Metrics from "./infra/metrics.js";
 import { initSentry, captureException } from "./infra/sentry.js";
-import { BlockchainProviderPool } from "./infra/provider-pool.js";
+
 import { logger } from "./infra/logger.js";
+import { generateOpenAPISpec } from "./docs/openapi.js";
 
 import dotenv from "dotenv";
 import path from "path";
@@ -288,67 +290,9 @@ server.register(rateLimit, {
 SocketService.init(server.server);
 
 // ──────────────────────────────────────────────
-// Health / Readiness Check
-// Returns 200 when healthy or degraded (non-critical deps down),
-// 503 when a critical dependency (MongoDB) is unreachable.
-server.get("/health", async (request, reply) => {
-  const checks: Record<
-    string,
-    { status: "ok" | "degraded" | "error"; latencyMs?: number }
-  > = {};
-
-  // MongoDB — critical
-  const mongoStart = Date.now();
-  try {
-    await mongoose.connection.db?.command({ ping: 1 });
-    checks.mongodb = { status: "ok", latencyMs: Date.now() - mongoStart };
-  } catch {
-    checks.mongodb = { status: "error", latencyMs: Date.now() - mongoStart };
-  }
-
-  // Redis — non-critical (graceful degradation is expected)
-  const redisStart = Date.now();
-  const redisOk = await RedisClient.testConnection();
-  checks.redis = {
-    status: redisOk ? "ok" : "degraded",
-    latencyMs: Date.now() - redisStart,
-  };
-
-  // Blockchain providers — non-critical
-  const providerHealth =
-    BlockchainProviderPool.getInstance().getProviderHealth();
-  for (const p of providerHealth) {
-    checks[`provider_${p.name}`] = {
-      status:
-        p.state === "closed"
-          ? "ok"
-          : p.state === "halfOpen"
-            ? "degraded"
-            : "error",
-    };
-  }
-
-  const isCriticalDown = checks.mongodb.status === "error";
-  const hasAnyDegraded = Object.values(checks).some((c) => c.status !== "ok");
-  const overallStatus = isCriticalDown
-    ? "unhealthy"
-    : hasAnyDegraded
-      ? "degraded"
-      : "ok";
-
-  return reply.code(isCriticalDown ? 503 : 200).send({
-    status: overallStatus,
-    engine: `Knot v${packageJson.version}`,
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    selfHosted: isSelfHosted(),
-    checks,
-  });
-});
-
-// ──────────────────────────────────────────────
 // Route Registration
 // ──────────────────────────────────────────────
+server.register(healthRoutes);
 server.register(merchantRoutes);
 server.register(invoiceRoutes);
 server.register(webhookRoutes);
@@ -361,6 +305,14 @@ server.register(paymentLinkRoutes);
 server.register(donationRoutes);
 server.register(affiliateRoutes);
 server.register(whiteLabelRoutes);
+
+// ──────────────────────────────────────────────
+// OpenAPI Spec — served at /openapi.json
+// ──────────────────────────────────────────────
+server.get("/openapi.json", async (_request, reply) => {
+  reply.header("Content-Type", "application/json; charset=utf-8");
+  return reply.send(generateOpenAPISpec());
+});
 
 // ──────────────────────────────────────────────
 // Price Oracle Endpoint (Phase 1)
