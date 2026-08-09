@@ -22,6 +22,10 @@ export type ErrorCode =
   | "testnet_currency_unsupported"
   | "address_config_missing"
   | "line_items_mismatch"
+  // Lightning
+  | "lightning_not_configured"
+  | "lightning_btc_only"
+  | "lightning_invoice_error"
   // Merchants
   | "merchant_not_found"
   | "merchant_suspended"

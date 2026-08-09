@@ -30,6 +30,13 @@ interface MerchantResponse {
   enabledCurrencies?: string[];
   plan?: string;
   twoFactorEnabled?: boolean;
+  lightningEnabled?: boolean;
+  lightningProvider?: string;
+  lndEndpoint?: string;
+  lndMacaroon?: string;
+  lndCert?: string;
+  clnEndpoint?: string;
+  clnRune?: string;
 }
 
 function mapMerchantToFormData(m: MerchantResponse): MerchantSettings {
@@ -55,6 +62,14 @@ function mapMerchantToFormData(m: MerchantResponse): MerchantSettings {
     bip21Enabled: m.bip21Enabled ?? true,
     enabledCurrencies: m.enabledCurrencies || [],
     plan: (m.plan as MerchantSettings["plan"]) || "starter",
+    lightningEnabled: m.lightningEnabled ?? false,
+    lightningProvider:
+      (m.lightningProvider as MerchantSettings["lightningProvider"]) || "lnd",
+    lndEndpoint: m.lndEndpoint || "",
+    lndMacaroon: m.lndMacaroon || "",
+    lndCert: m.lndCert || "",
+    clnEndpoint: m.clnEndpoint || "",
+    clnRune: m.clnRune || "",
   };
 }
 
@@ -97,6 +112,13 @@ export function useSettings() {
         bip21Enabled: true,
         enabledCurrencies: [],
         plan: "starter",
+        lightningEnabled: false,
+        lightningProvider: "lnd",
+        lndEndpoint: "",
+        lndMacaroon: "",
+        lndCert: "",
+        clnEndpoint: "",
+        clnRune: "",
       } satisfies MerchantSettings);
 
   const twoFactorEnabled = merchantData?.twoFactorEnabled || false;
@@ -132,6 +154,13 @@ export function useSettings() {
           dataToSave.underpaymentTolerancePercentage,
         bip21Enabled: dataToSave.bip21Enabled,
         enabledCurrencies: dataToSave.enabledCurrencies,
+        lightningEnabled: dataToSave.lightningEnabled,
+        lightningProvider: dataToSave.lightningProvider,
+        lndEndpoint: dataToSave.lndEndpoint,
+        lndMacaroon: dataToSave.lndMacaroon,
+        lndCert: dataToSave.lndCert,
+        clnEndpoint: dataToSave.clnEndpoint,
+        clnRune: dataToSave.clnRune,
       });
 
       // Revalidate SWR cache with fresh data

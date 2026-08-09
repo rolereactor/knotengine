@@ -72,6 +72,13 @@ export const merchantSettingsSchema = z.object({
   bip21Enabled: z.boolean(),
   enabledCurrencies: z.array(z.string()),
   plan: z.enum(["starter", "professional", "enterprise"]).optional(),
+  lightningEnabled: z.boolean().optional(),
+  lightningProvider: z.enum(["lnd", "cln"]).optional(),
+  lndEndpoint: z.string().optional(),
+  lndMacaroon: z.string().optional(),
+  lndCert: z.string().optional(),
+  clnEndpoint: z.string().optional(),
+  clnRune: z.string().optional(),
 });
 
 export type MerchantSettings = z.infer<typeof merchantSettingsSchema>;

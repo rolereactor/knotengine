@@ -7,18 +7,20 @@ import { MerchantDetailsCard } from "./components/merchant-details-card";
 import { AppearanceCard } from "./components/appearance-card";
 import { TwoFactorCard } from "./components/two-factor-card";
 import { PaymentEngineCard } from "./components/payment-engine-card";
+import { LightningCard } from "./components/lightning-card";
 import { IpAllowlistCard } from "./components/ip-allowlist-card";
 import { TwoFASetupDialog } from "./components/two-fa-setup-dialog";
 import { TwoFADisableDialog } from "./components/two-fa-disable-dialog";
 import { DangerZoneCard } from "./components/danger-zone-card";
 import { SuccessToast } from "./components/success-toast";
 import { SubNavLayout } from "@/components/sub-nav-layout";
-import { Store, ShieldCheck, Sliders, Globe, Trash2 } from "lucide-react";
+import { Store, ShieldCheck, Sliders, Globe, Trash2, Zap } from "lucide-react";
 
 const sections = [
   { label: "Merchant Profile", value: "merchant", icon: Store },
   { label: "Security", value: "security", icon: ShieldCheck },
   { label: "Payment Engine", value: "payment", icon: Sliders },
+  { label: "Lightning", value: "lightning", icon: Zap },
   { label: "IP Allowlist", value: "ip-allowlist", icon: Globe },
   { label: "Danger Zone", value: "danger", icon: Trash2 },
 ];
@@ -98,6 +100,14 @@ export default function SettingsPage() {
 
         {activeSection === "payment" && (
           <PaymentEngineCard
+            formData={formData}
+            onSave={handleSave}
+            saving={saving}
+          />
+        )}
+
+        {activeSection === "lightning" && (
+          <LightningCard
             formData={formData}
             onSave={handleSave}
             saving={saving}

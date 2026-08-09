@@ -37,6 +37,14 @@ export interface IInvoice extends Document {
   lastReceivedAt?: Date;
   cryptoCurrency: string;
   payAddress: string;
+  /** Payment method used for this invoice */
+  paymentMethod?: "onchain" | "lightning";
+  /** Lightning invoice BOLT11 string */
+  lightningPaymentRequest?: string;
+  /** Lightning payment hash for tracking settlement */
+  lightningPaymentHash?: string;
+  /** Lightning payment preimage (proof of payment) */
+  lightningPaymentPreimage?: string;
   /** KnotEngine Fee (Platform Fee) */
   feeUsd: number;
   feeCrypto: number;
@@ -96,6 +104,14 @@ const InvoiceSchema: Schema = new Schema(
     lastReceivedAt: { type: Date },
     cryptoCurrency: { type: String, required: true },
     payAddress: { type: String, required: true },
+    paymentMethod: {
+      type: String,
+      enum: ["onchain", "lightning"],
+      default: "onchain",
+    },
+    lightningPaymentRequest: { type: String },
+    lightningPaymentHash: { type: String },
+    lightningPaymentPreimage: { type: String },
     feeUsd: { type: Number, required: true, default: 0 },
     feeCrypto: { type: Number, required: true, default: 0 },
     derivationIndex: { type: Number, required: true },

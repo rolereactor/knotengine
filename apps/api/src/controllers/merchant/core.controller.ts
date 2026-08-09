@@ -419,6 +419,13 @@ export const MerchantCoreController = {
       two_factor_enabled: user?.twoFactorEnabled || false,
       fees_accrued: merchant.feesAccrued,
       credit_balance: user?.creditBalance ?? 0,
+      lightning_enabled: merchant.lightningEnabled ?? false,
+      lightning_provider: merchant.lightningProvider || "lnd",
+      lnd_endpoint: merchant.lndEndpoint || "",
+      lnd_macaroon: merchant.lndMacaroon || "",
+      lnd_cert: merchant.lndCert || "",
+      cln_endpoint: merchant.clnEndpoint || "",
+      cln_rune: merchant.clnRune || "",
       created_at: merchant.createdAt,
     };
   },
@@ -568,6 +575,10 @@ export const MerchantCoreController = {
         "invoice.failed",
       ],
       confirmation_policy: updated.confirmationPolicy,
+      lightning_enabled: updated.lightningEnabled ?? false,
+      lightning_provider: updated.lightningProvider || "lnd",
+      lnd_endpoint: updated.lndEndpoint || "",
+      cln_endpoint: updated.clnEndpoint || "",
     };
   },
 };

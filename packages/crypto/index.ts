@@ -3,8 +3,29 @@ import * as ecc from "tiny-secp256k1";
 import { BIP32Factory, BIP32Interface } from "bip32";
 import { ethers } from "ethers";
 import * as crypto from "crypto";
+import type {
+  LightningConfig,
+  LightningInvoice,
+  LightningPayment,
+  LightningWalletBalance,
+  LightningPeer,
+  LightningProvider,
+} from "./src/lightning/types.js";
+import { LndProvider } from "./src/lightning/lnd-provider.js";
+import { ClnProvider } from "./src/lightning/cln-provider.js";
 
 const bip32 = BIP32Factory(ecc);
+
+export { LndProvider, ClnProvider };
+
+export type {
+  LightningConfig,
+  LightningInvoice,
+  LightningPayment,
+  LightningWalletBalance,
+  LightningPeer,
+  LightningProvider,
+};
 
 export class Derivator {
   /**

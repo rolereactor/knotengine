@@ -15,6 +15,7 @@ import * as Metrics from "../infra/metrics.js";
 import { CryptoMath } from "../core/crypto-math.js";
 import { apiError } from "../utils/api-error.js";
 import { RedisClient } from "../infra/redis-client.js";
+import { createLightningProvider } from "../infra/lightning-provider.js";
 
 export const InvoicesController = {
   createInvoice: async (request: any, reply: FastifyReply) => {
@@ -38,6 +39,7 @@ export const InvoicesController = {
         description,
         is_testnet,
         line_items,
+        payment_method,
       } = request.body;
 
       // Line items: calculate total from line items if provided
@@ -310,7 +312,66 @@ export const InvoicesController = {
       // 5. Generate unique invoice ID
       const invoiceId = `inv_${crypto.randomBytes(12).toString("hex")}`;
 
-      // 6. Calculate Fees and Totals
+      // 6. Calculate expiration
+      const expirationMinutes =
+        ttl_minutes || merchant.invoiceExpirationMinutes || 30;
+      const expiresAt = new Date(Date.now() + expirationMinutes * 60 * 1000);
+
+      // Lightning Invoice Creation
+      let lightningPaymentRequest: string | undefined;
+      let lightningPaymentHash: string | undefined;
+      const resolvedPaymentMethod: "onchain" | "lightning" =
+        payment_method === "lightning" ? "lightning" : "onchain";
+
+      if (payment_method === "lightning") {
+        const lightningProvider = createLightningProvider(merchant);
+        if (!lightningProvider) {
+          return apiError(
+            reply,
+            400,
+            "lightning_not_configured",
+            "Lightning payments are not configured for this merchant. Please enable Lightning in your settings.",
+          );
+        }
+
+        // Lightning only supports BTC payments
+        if (currency !== "BTC") {
+          return apiError(
+            reply,
+            400,
+            "lightning_btc_only",
+            "Lightning payments are only supported for BTC.",
+            "currency",
+          );
+        }
+
+        try {
+          // Convert USD amount to sats (approximate for Lightning)
+          const btcAmount = CryptoMath.divide(resolvedAmountUsd, customerPrice);
+          const satAmount = Math.round(btcAmount * 100_000_000);
+
+          const expirySeconds = expirationMinutes * 60;
+          const lightningInvoice = await lightningProvider.createInvoice(
+            satAmount,
+            description || `Invoice ${invoiceId}`,
+            expirySeconds,
+          );
+
+          lightningPaymentRequest = lightningInvoice.paymentRequest;
+          lightningPaymentHash = lightningInvoice.paymentHash;
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          console.error(`Lightning invoice creation error: ${message}`);
+          return apiError(
+            reply,
+            500,
+            "lightning_invoice_error",
+            "Failed to create Lightning invoice. Please try again.",
+          );
+        }
+      }
+
+      // 7. Calculate Fees and Totals
       // Determine the rate based on the plan: Starter: 1.0%, Pro: 0.5%, Enterprise: 0.25%
       const planRates: Record<string, number> = {
         starter: 0.01,
@@ -354,11 +415,7 @@ export const InvoicesController = {
         resolvedAmountUsd,
       );
 
-      // 7. Create the invoice
-      const expirationMinutes =
-        ttl_minutes || merchant.invoiceExpirationMinutes || 30;
-      const expiresAt = new Date(Date.now() + expirationMinutes * 60 * 1000);
-
+      // 8. Create the invoice
       const invoice = await Invoice.create({
         merchantId: merchant._id,
         invoiceId,
@@ -367,6 +424,9 @@ export const InvoicesController = {
         cryptoAmount: totalCryptoAmount,
         cryptoCurrency: currency,
         payAddress,
+        paymentMethod: resolvedPaymentMethod,
+        lightningPaymentRequest,
+        lightningPaymentHash,
         feeUsd, // Platform internal tracking
         feeCrypto,
         derivationIndex: nextIndex,
@@ -411,6 +471,11 @@ export const InvoicesController = {
         crypto_amount: invoice.cryptoAmount,
         crypto_currency: invoice.cryptoCurrency,
         pay_address: invoice.payAddress,
+        payment_method: invoice.paymentMethod || "onchain",
+        ...(invoice.paymentMethod === "lightning" &&
+        invoice.lightningPaymentRequest
+          ? { lightning_payment_request: invoice.lightningPaymentRequest }
+          : {}),
         expires_at: invoice.expiresAt,
         status: invoice.status,
         checkout_url: checkoutUrl,
@@ -525,6 +590,11 @@ export const InvoicesController = {
         invoice.cryptoAmountReceived || 0,
       ),
       crypto_currency: invoice.cryptoCurrency,
+      payment_method: invoice.paymentMethod || "onchain",
+      ...(invoice.paymentMethod === "lightning" &&
+      invoice.lightningPaymentRequest
+        ? { lightning_payment_request: invoice.lightningPaymentRequest }
+        : {}),
       status: invoice.status,
       confirmations: invoice.confirmations,
       fee_usd: invoice.feeUsd,
@@ -624,6 +694,7 @@ export const InvoicesController = {
         ),
         crypto_currency: inv.cryptoCurrency,
         pay_address: inv.payAddress,
+        payment_method: inv.paymentMethod || "onchain",
         status: inv.status,
         confirmations: inv.confirmations,
         required_confirmations: inv.requiredConfirmations,

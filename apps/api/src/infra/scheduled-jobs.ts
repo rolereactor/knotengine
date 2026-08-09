@@ -11,9 +11,11 @@ export class ScheduledJobs {
   private static invoiceExpirationQueue: Queue | null = null;
   private static billingQueue: Queue | null = null;
   private static floatManagementQueue: Queue | null = null;
+  private static lightningPollingQueue: Queue | null = null;
   private static invoiceExpirationWorker: Worker | null = null;
   private static billingWorker: Worker | null = null;
   private static floatManagementWorker: Worker | null = null;
+  private static lightningPollingWorker: Worker | null = null;
   private static isInitialized = false;
 
   public static async init(): Promise<void> {
@@ -73,6 +75,16 @@ export class ScheduledJobs {
       },
     });
 
+    this.lightningPollingQueue = new Queue("lightning-polling", {
+      connection: bullmqConnection,
+      defaultJobOptions: {
+        attempts: 2,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    });
+
     this.invoiceExpirationWorker = new Worker(
       "invoice-expiration",
       async (_job: Job) => {
@@ -121,6 +133,20 @@ export class ScheduledJobs {
       },
     );
 
+    this.lightningPollingWorker = new Worker(
+      "lightning-polling",
+      async (_job: Job) => {
+        const { ConfirmationEngine } =
+          await import("../core/confirmation-engine.js");
+        const settled = await ConfirmationEngine.pollLightningSettlements();
+        return { processed: true, settled };
+      },
+      {
+        connection: bullmqConnection,
+        concurrency: 1,
+      },
+    );
+
     this.invoiceExpirationWorker.on("failed", (job, err) => {
       console.error(
         `❌ Invoice expiration job ${job?.id} failed:`,
@@ -136,6 +162,10 @@ export class ScheduledJobs {
       console.error(`❌ Float management job ${job?.id} failed:`, err.message);
     });
 
+    this.lightningPollingWorker.on("failed", (job, err) => {
+      console.error(`❌ Lightning polling job ${job?.id} failed:`, err.message);
+    });
+
     await this.scheduleRecurringJobs();
 
     this.isInitialized = true;
@@ -146,7 +176,8 @@ export class ScheduledJobs {
     if (
       !this.invoiceExpirationQueue ||
       !this.billingQueue ||
-      !this.floatManagementQueue
+      !this.floatManagementQueue ||
+      !this.lightningPollingQueue
     ) {
       return;
     }
@@ -191,6 +222,16 @@ export class ScheduledJobs {
       },
     );
 
+    await this.lightningPollingQueue.add(
+      "poll-lightning-settlements",
+      {},
+      {
+        repeat: { every: 30 * 1000 }, // Poll every 30 seconds
+        jobId: "lightning-polling-recurring",
+        removeOnComplete: true,
+      },
+    );
+
     console.log("🗓️ Recurring jobs scheduled");
   }
 
@@ -202,13 +243,15 @@ export class ScheduledJobs {
     invoiceExpiration: { waiting: number; active: number } | null;
     billing: { waiting: number; active: number } | null;
     floatManagement: { waiting: number; active: number } | null;
+    lightningPolling: { waiting: number; active: number } | null;
   } | null> {
     if (!this.isInitialized) return null;
 
-    const [ie, billing, float] = await Promise.all([
+    const [ie, billing, float, lightning] = await Promise.all([
       this.invoiceExpirationQueue?.getJobCounts(),
       this.billingQueue?.getJobCounts(),
       this.floatManagementQueue?.getJobCounts(),
+      this.lightningPollingQueue?.getJobCounts(),
     ]);
 
     return {
@@ -221,6 +264,9 @@ export class ScheduledJobs {
       floatManagement: float
         ? { waiting: float.waiting || 0, active: float.active || 0 }
         : null,
+      lightningPolling: lightning
+        ? { waiting: lightning.waiting || 0, active: lightning.active || 0 }
+        : null,
     };
   }
 
@@ -229,20 +275,24 @@ export class ScheduledJobs {
       this.invoiceExpirationWorker?.close(),
       this.billingWorker?.close(),
       this.floatManagementWorker?.close(),
+      this.lightningPollingWorker?.close(),
     ]);
 
     await Promise.all([
       this.invoiceExpirationQueue?.close(),
       this.billingQueue?.close(),
       this.floatManagementQueue?.close(),
+      this.lightningPollingQueue?.close(),
     ]);
 
     this.invoiceExpirationWorker = null;
     this.billingWorker = null;
     this.floatManagementWorker = null;
+    this.lightningPollingWorker = null;
     this.invoiceExpirationQueue = null;
     this.billingQueue = null;
     this.floatManagementQueue = null;
+    this.lightningPollingQueue = null;
     this.isInitialized = false;
 
     console.log("🗓️ ScheduledJobs shutdown complete");

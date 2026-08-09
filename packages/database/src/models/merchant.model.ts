@@ -76,6 +76,14 @@ export interface IMerchant extends Document {
   /** IP Allowlisting for API access */
   allowedIpAddresses?: string[];
   ipAllowlistEnabled: boolean;
+  /** Lightning Network Settings */
+  lightningEnabled: boolean;
+  lightningProvider?: "lnd" | "cln";
+  lndEndpoint?: string;
+  lndMacaroon?: string;
+  lndCert?: string;
+  clnEndpoint?: string;
+  clnRune?: string;
   /** Email Notification Preferences */
   emailNotifications: {
     paymentReceived: boolean;
@@ -200,6 +208,18 @@ const MerchantSchema: Schema = new Schema(
     /** IP Allowlisting for API access */
     allowedIpAddresses: { type: [String], default: [] },
     ipAllowlistEnabled: { type: Boolean, default: false },
+    /** Lightning Network Settings */
+    lightningEnabled: { type: Boolean, default: false },
+    lightningProvider: {
+      type: String,
+      enum: ["lnd", "cln"],
+      default: "lnd",
+    },
+    lndEndpoint: { type: String },
+    lndMacaroon: { type: String },
+    lndCert: { type: String },
+    clnEndpoint: { type: String },
+    clnRune: { type: String },
     /** Email Notification Preferences */
     emailNotifications: {
       type: {

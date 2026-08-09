@@ -15,6 +15,7 @@ import { CryptoMath } from "./crypto-math.js";
 import * as Metrics from "../infra/metrics.js";
 import { childLogger } from "../infra/logger.js";
 import { EmailService } from "../infra/email-service.js";
+import { createLightningProvider } from "../infra/lightning-provider.js";
 
 const logger = childLogger("confirmation-engine");
 
@@ -156,7 +157,7 @@ export class ConfirmationEngine {
           },
         });
 
-        const { status: newStatus, amountStatus } = this.resolveStatus(
+        const { status: newStatus } = this.resolveStatus(
           invoice,
           totalCryptoReceived,
           event.confirmations,
@@ -576,5 +577,216 @@ export class ConfirmationEngine {
     }
 
     return expired;
+  }
+
+  /**
+   * Processes a Lightning Network payment settlement event.
+   * Called when a Lightning invoice is paid and confirmed by the merchant's LND/CLN node.
+   */
+  public static async processLightningSettlement(event: {
+    invoiceId: string;
+    paymentHash: string;
+    preimage: string;
+    amountSatoshis: number;
+  }): Promise<{
+    matched: boolean;
+    invoiceId?: string;
+    newStatus?: string;
+  }> {
+    try {
+      const invoice = await Invoice.findOne({
+        invoiceId: event.invoiceId,
+        lightningPaymentHash: event.paymentHash,
+        paymentMethod: "lightning",
+        status: {
+          $in: ["pending", "mempool_detected", "confirming", "partially_paid"],
+        },
+      });
+
+      if (!invoice) {
+        logger.warn(
+          { invoiceId: event.invoiceId, paymentHash: event.paymentHash },
+          "Lightning settlement for unknown or already processed invoice",
+        );
+        return { matched: false };
+      }
+
+      const merchant = await Merchant.findById(invoice.merchantId);
+      if (!merchant) return { matched: false };
+
+      // Lightning payments are instant settlements (0 confirmations)
+      const receivedAmount = event.amountSatoshis / 100_000_000; // Convert sats to BTC
+      const totalCryptoReceived = CryptoMath.add(
+        invoice.cryptoAmountReceived || 0,
+        receivedAmount,
+      );
+
+      const { status: newStatus } = this.resolveStatus(
+        invoice,
+        totalCryptoReceived,
+        invoice.requiredConfirmations, // Lightning is instant
+        merchant.underpaymentTolerancePercentage,
+      );
+
+      const isTerminalSuccess =
+        newStatus === "confirmed" || newStatus === "overpaid";
+
+      const updateData: Partial<Record<string, unknown>> = {
+        txHash: event.paymentHash,
+        confirmations: invoice.requiredConfirmations,
+        status: newStatus,
+        lightningPaymentPreimage: event.preimage,
+        cryptoAmountReceived: totalCryptoReceived,
+      };
+
+      if (isTerminalSuccess && !invoice.paidAt) {
+        updateData.paidAt = new Date();
+      }
+
+      await Invoice.findByIdAndUpdate(invoice._id, { $set: updateData });
+
+      const isTestnet = invoice.metadata?.isTestnet === true;
+
+      SocketService.emitStatusUpdate(invoice.invoiceId, newStatus, {
+        confirmations: invoice.requiredConfirmations,
+        requiredConfirmations: invoice.requiredConfirmations,
+        txHash: event.paymentHash,
+        cryptoAmountReceived: totalCryptoReceived,
+      });
+
+      if (isTerminalSuccess) {
+        WebhookDispatcher.dispatch(invoice.invoiceId, "invoice.confirmed");
+      } else {
+        WebhookDispatcher.dispatch(invoice.invoiceId, `invoice.${newStatus}`);
+      }
+
+      if (isTerminalSuccess && !invoice.paidAt && !isTestnet) {
+        await Merchant.findByIdAndUpdate(invoice.merchantId, {
+          $inc: {
+            "feesAccrued.usd": invoice.feeUsd,
+            [`feesAccrued.${invoice.cryptoCurrency}`]: invoice.feeCrypto,
+          },
+        });
+
+        if (merchant.userId) {
+          await User.findByIdAndUpdate(merchant.userId, {
+            $inc: { creditBalance: -invoice.feeUsd },
+          });
+        }
+
+        const confirmationSeconds =
+          (Date.now() - new Date(invoice.createdAt).getTime()) / 1000;
+        Metrics.recordPayment(
+          invoice.cryptoCurrency,
+          "mainnet",
+          invoice.amountUsd,
+          confirmationSeconds,
+        );
+
+        NotificationService.notifyPaymentConfirmed(
+          invoice.merchantId.toString(),
+          invoice.invoiceId,
+          invoice.amountUsd,
+          isTestnet,
+        );
+
+        if (merchant.emailNotifications?.paymentConfirmed !== false) {
+          const merchantUser = merchant.userId
+            ? await User.findById(merchant.userId)
+            : null;
+          if (merchantUser?.email) {
+            const merchantName =
+              merchant.name || merchantUser.email.split("@")[0];
+            EmailService.sendPaymentAlert({
+              to: merchantUser.email,
+              merchantName,
+              invoiceId: invoice.invoiceId,
+              amount: invoice.amountUsd.toFixed(2),
+              currency: "USD",
+              status: "confirmed",
+              checkoutUrl: `${process.env.DASHBOARD_URL || "http://localhost:5052"}/dashboard/payments`,
+            }).catch((err) =>
+              logger.error(
+                { err, invoiceId: invoice.invoiceId },
+                "Failed to send confirmed email for Lightning payment",
+              ),
+            );
+          }
+        }
+
+        const user = merchant.userId
+          ? await User.findById(merchant.userId)
+          : null;
+        if (user && user.creditBalance < 3.0) {
+          NotificationService.notifyLowBalance(
+            invoice.merchantId.toString(),
+            user.creditBalance,
+          );
+        }
+      }
+
+      logger.info(
+        {
+          invoiceId: invoice.invoiceId,
+          from: invoice.status,
+          to: newStatus,
+          paymentHash: event.paymentHash,
+        },
+        "Lightning invoice settled",
+      );
+
+      return { matched: true, invoiceId: invoice.invoiceId, newStatus };
+    } catch (err) {
+      logger.error({ err }, "Lightning settlement processing error");
+      return { matched: false };
+    }
+  }
+
+  /**
+   * Polls Lightning invoices for settlement status.
+   * Should be called periodically (e.g., every 30 seconds).
+   */
+  public static async pollLightningSettlements(): Promise<number> {
+    let settled = 0;
+
+    const pendingLightningInvoices = await Invoice.find({
+      paymentMethod: "lightning",
+      status: {
+        $in: ["pending", "mempool_detected", "confirming", "partially_paid"],
+      },
+      lightningPaymentHash: { $exists: true, $ne: null },
+      expiresAt: { $gt: new Date() },
+    }).limit(50);
+
+    for (const invoice of pendingLightningInvoices) {
+      try {
+        const merchant = await Merchant.findById(invoice.merchantId);
+        if (!merchant || !merchant.lightningEnabled) continue;
+
+        const provider = createLightningProvider(merchant);
+        if (!provider) continue;
+
+        const payment = await provider.lookupPayment(
+          invoice.lightningPaymentHash!,
+        );
+
+        if (payment.status === "succeeded" && payment.preimage) {
+          await this.processLightningSettlement({
+            invoiceId: invoice.invoiceId,
+            paymentHash: invoice.lightningPaymentHash!,
+            preimage: payment.preimage,
+            amountSatoshis: payment.amount,
+          });
+          settled++;
+        }
+      } catch (err) {
+        logger.error(
+          { invoiceId: invoice.invoiceId, err },
+          "Error polling Lightning settlement",
+        );
+      }
+    }
+
+    return settled;
   }
 }
