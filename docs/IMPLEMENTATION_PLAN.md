@@ -138,15 +138,15 @@
 
 ### 3.2 Database
 
-- [ ] **P2** Batch `WebhookDelivery` creates in `WebhookDispatcher.dispatchSync`
+- [x] **P2** Batch `WebhookDelivery` creates in `WebhookDispatcher.dispatchSync`
   - File: `apps/api/src/infra/webhook-dispatcher.ts:86-89`
   - Use `insertMany()` instead of N `create()` calls
 
-- [ ] **P3** Batch `WebhookEndpoint` updates in dispatcher
+- [x] **P3** Batch `WebhookEndpoint` updates in dispatcher
   - File: `apps/api/src/infra/webhook-dispatcher.ts:120-261`
   - Use `bulkWrite()` instead of N `findByIdAndUpdate()` calls
 
-- [ ] **P4** Fetch Merchant once in ConfirmationEngine (currently queries twice)
+- [x] **P4** Fetch Merchant once in ConfirmationEngine (currently queries twice)
   - File: `apps/api/src/core/confirmation-engine.ts:99,325`
 
 - [x] **P5** Replace 4 separate `countDocuments` in webhook stats with single `$facet` aggregation
@@ -155,12 +155,12 @@
 - [x] **P6** Add compound index `DonationSchema.index({ slug: 1, isActive: 1 })`
   - File: `packages/database/src/models/donation.model.ts`
 
-- [ ] **P7** Add `DonationPageSchema.index({ merchantId: 1, createdAt: -1 })`
+- [x] **P7** Add `DonationPageSchema.index({ merchantId: 1, createdAt: -1 })`
   - File: `packages/database/src/models/donation-page.model.ts` (if exists)
 
 ### 3.3 Caching
 
-- [ ] **P8** Cache leaderboard results for popular donations (>10k donors)
+- [x] **P8** Cache leaderboard results for popular donations (>10k donors)
   - File: `apps/api/src/routes/donations.ts:847-865`
   - Use Redis with 60s TTL
 
@@ -169,10 +169,10 @@
 
 ### 3.4 Redis
 
-- [ ] **P10** Add periodic reconnection strategy to Redis client (currently stops after 3 retries)
+- [x] **P10** Add periodic reconnection strategy to Redis client (currently stops after 3 retries)
   - File: `apps/api/src/infra/redis-client.ts:29-37`
 
-- [ ] **P11** Add Redis connection pool configuration
+- [x] **P11** Add Redis connection pool configuration
   - File: `apps/api/src/infra/redis-client.ts`
 
 ### 3.5 Cleanup
@@ -187,11 +187,11 @@
 
 ### 4.1 API Documentation
 
-- [ ] **D1** Generate OpenAPI 3.1 spec from Zod schemas
+- [x] **D1** Generate OpenAPI 3.1 spec from Zod schemas
   - Command: `pnpm add -D @asteasolutions/zod-to-openapi`
   - File: `apps/api/src/docs/openapi.ts` (new)
 
-- [ ] **D2** Add response examples to all route schemas
+- [x] **D2** Add response examples to all route schemas
   - Files: All files in `apps/api/src/routes/`
 
 - [x] **D3** Add `X-Request-Id` header to all responses (UUID for debugging)
@@ -199,18 +199,18 @@
 
 ### 4.2 SDK
 
-- [ ] **D4** Add TypeScript types export to SDK package
+- [x] **D4** Add TypeScript types export to SDK package
   - File: `packages/sdk/src/index.ts`
 
-- [ ] **D5** Add retry logic with exponential backoff to SDK client
+- [x] **D5** Add retry logic with exponential backoff to SDK client
   - File: `packages/sdk/src/client.ts`
 
-- [ ] **D6** Add request/response interceptors for logging
+- [x] **D6** Add request/response interceptors for logging
   - File: `packages/sdk/src/client.ts`
 
 ### 4.3 Error Handling
 
-- [ ] **D7** Add `doc_url` to all `apiError()` calls (currently some are missing)
+- [x] **D7** Add `doc_url` to all `apiError()` calls (currently some are missing)
   - Files: All route files using `apiError()`
 
 - [x] **D8** Add error code constants file (`src/utils/error-codes.ts`)
@@ -222,7 +222,7 @@
 - [x] **D9** Add test for `safeCompare` edge cases (undefined, empty, mismatched lengths)
   - File: `apps/api/tests/null-safety.test.ts` (new)
 
-- [ ] **D10** Add integration test for rate limiting behavior
+- [x] **D10** Add integration test for rate limiting behavior
   - File: `apps/api/tests/rate-limits.test.ts` (extend)
 
 ---
@@ -240,7 +240,7 @@
 - [x] **U3** Add invoice search by customer email or description
   - File: `apps/api/src/controllers/invoices.controller.ts`
 
-- [ ] **U4** Add invoice line items support (description, quantity, unit price)
+- [x] **U4** Add invoice line items support (description, quantity, unit price)
   - File: `packages/database/src/models/invoice.model.ts`
 
 ### 5.2 Webhooks
@@ -256,21 +256,21 @@
 
 ### 5.3 Notifications
 
-- [ ] **U8** Add email notifications for invoice confirmed/expired
+- [x] **U8** Add email notifications for invoice confirmed/expired
   - File: `apps/api/src/core/confirmation-engine.ts`
 
-- [ ] **U9** Add configurable notification preferences per merchant
+- [x] **U9** Add configurable notification preferences per merchant
   - File: `packages/database/src/models/merchant.model.ts`
 
 ### 5.4 Reporting
 
-- [ ] **U10** Add daily/weekly revenue summary email
+- [x] **U10** Add daily/weekly revenue summary email
   - File: `apps/api/src/core/billing.ts` (new cron job)
 
-- [ ] **U11** Add revenue charts in dashboard (daily, weekly, monthly)
+- [x] **U11** Add revenue charts in dashboard (daily, weekly, monthly)
   - File: `apps/dashboard/src/app/dashboard/analytics/`
 
-- [ ] **U12** Add payment method breakdown in analytics
+- [x] **U12** Add payment method breakdown in analytics
   - File: `apps/dashboard/src/app/dashboard/analytics/`
 
 ### 5.5 Settings
@@ -310,7 +310,7 @@
 - [x] **I6** Add Sentry release tracking (tag releases with version)
   - File: `apps/api/src/infra/sentry.ts`
 
-- [ ] **I7** Add Prometheus alerting rules for critical metrics
+- [x] **I7** Add Prometheus alerting rules for critical metrics
   - File: `apps/api/src/infra/metrics.ts`
 
 ### 6.4 Database
@@ -371,10 +371,10 @@
 
 ### 8.1 Cleanup
 
-- [ ] **Q1** Remove dead `dbQueryLatency` metric or wire it up
+- [x] **Q1** Remove dead `dbQueryLatency` metric or wire it up
   - File: `apps/api/src/infra/metrics.ts:189-194`
 
-- [ ] **Q2** Deduplicate status-calculation logic in ConfirmationEngine
+- [x] **Q2** Deduplicate status-calculation logic in ConfirmationEngine
   - File: `apps/api/src/core/confirmation-engine.ts:97-376`
   - Extract shared logic into private method
 
@@ -391,15 +391,15 @@
 
 ### 8.3 Linting
 
-- [ ] **Q6** Add ESLint rule to ban `console.log` in production code
+- [x] **Q6** Add ESLint rule to ban `console.log` in production code
   - File: `eslint.config.mjs`
 
-- [ ] **Q7** Add ESLint rule to enforce `safeCompare` over `===` for secrets
+- [x] **Q7** Add ESLint rule to enforce `safeCompare` over `===` for secrets
   - File: `eslint.config.mjs`
 
 ### 8.4 Dependencies
 
-- [ ] **Q8** Audit and update outdated dependencies
+- [x] **Q8** Audit and update outdated dependencies
   - Command: `pnpm outdated && pnpm update`
 
 ---
@@ -409,14 +409,14 @@
 | Section                      | Total   | Complete | Remaining |
 | ---------------------------- | ------- | -------- | --------- |
 | 1. Security Hardening        | 19      | 19       | 0         |
-| 2. Observability & Logging   | 8       | 7        | 1         |
-| 3. Performance & Scalability | 12      | 9        | 3         |
-| 4. Developer Experience      | 10      | 8        | 2         |
-| 5. Merchant UX               | 14      | 7        | 7         |
-| 6. Infrastructure            | 8       | 6        | 2         |
+| 2. Observability & Logging   | 8       | 8        | 0         |
+| 3. Performance & Scalability | 12      | 11       | 1         |
+| 4. Developer Experience      | 10      | 10       | 0         |
+| 5. Merchant UX               | 14      | 13       | 1         |
+| 6. Infrastructure            | 8       | 7        | 1         |
 | 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
-| 8. Code Quality              | 8       | 4        | 4         |
-| **Total**                    | **105** | **87**   | **18**    |
+| 8. Code Quality              | 8       | 8        | 0         |
+| **Total**                    | **105** | **102**  | **3**     |
 
 ---
 
