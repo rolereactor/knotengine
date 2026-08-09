@@ -278,7 +278,7 @@
 - [x] **U13** Add API key rotation (regenerate without deleting)
   - File: `apps/api/src/routes/merchants.ts`
 
-- [ ] **U14** Add IP allowlist management UI in dashboard
+- [x] **U14** Add IP allowlist management UI in dashboard
   - File: `apps/dashboard/src/app/dashboard/settings/`
 
 ---
@@ -412,11 +412,11 @@
 | 2. Observability & Logging   | 8       | 8        | 0         |
 | 3. Performance & Scalability | 12      | 12       | 0         |
 | 4. Developer Experience      | 10      | 10       | 0         |
-| 5. Merchant UX               | 14      | 13       | 1         |
+| 5. Merchant UX               | 14      | 14       | 0         |
 | 6. Infrastructure            | 8       | 8        | 0         |
 | 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
 | 8. Code Quality              | 8       | 8        | 0         |
-| **Total**                    | **105** | **104**  | **1**     |
+| **Total**                    | **105** | **105**  | **0**     |
 
 ---
 
