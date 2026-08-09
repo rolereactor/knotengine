@@ -29,4 +29,5 @@ export const swrKeys = {
     params
       ? (["/v1/merchants/me/notifications", params] as const)
       : "/v1/merchants/me/notifications",
+  ipAllowlist: "/v1/merchants/me/ip-allowlist" as const,
 };

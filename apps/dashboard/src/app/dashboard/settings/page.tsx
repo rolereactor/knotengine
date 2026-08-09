@@ -2,21 +2,24 @@
 
 import { useState } from "react";
 import { useSettings } from "./hooks/use-settings";
+import { useIpAllowlist } from "./hooks/use-ip-allowlist";
 import { MerchantDetailsCard } from "./components/merchant-details-card";
 import { AppearanceCard } from "./components/appearance-card";
 import { TwoFactorCard } from "./components/two-factor-card";
 import { PaymentEngineCard } from "./components/payment-engine-card";
+import { IpAllowlistCard } from "./components/ip-allowlist-card";
 import { TwoFASetupDialog } from "./components/two-fa-setup-dialog";
 import { TwoFADisableDialog } from "./components/two-fa-disable-dialog";
 import { DangerZoneCard } from "./components/danger-zone-card";
 import { SuccessToast } from "./components/success-toast";
 import { SubNavLayout } from "@/components/sub-nav-layout";
-import { Store, ShieldCheck, Sliders, Trash2 } from "lucide-react";
+import { Store, ShieldCheck, Sliders, Globe, Trash2 } from "lucide-react";
 
 const sections = [
   { label: "Merchant Profile", value: "merchant", icon: Store },
   { label: "Security", value: "security", icon: ShieldCheck },
   { label: "Payment Engine", value: "payment", icon: Sliders },
+  { label: "IP Allowlist", value: "ip-allowlist", icon: Globe },
   { label: "Danger Zone", value: "danger", icon: Trash2 },
 ];
 
@@ -49,6 +52,8 @@ export default function SettingsPage() {
     handleEnable2FA,
     handleDisable2FA,
   } = useSettings();
+
+  const ipAllowlist = useIpAllowlist();
 
   const [activeSection, setActiveSection] = useState("merchant");
 
@@ -96,6 +101,19 @@ export default function SettingsPage() {
             formData={formData}
             onSave={handleSave}
             saving={saving}
+          />
+        )}
+
+        {activeSection === "ip-allowlist" && (
+          <IpAllowlistCard
+            plan={formData.plan || "starter"}
+            enabled={ipAllowlist.enabled}
+            allowedIps={ipAllowlist.allowedIps}
+            saving={ipAllowlist.saving}
+            loading={ipAllowlist.loading}
+            onToggle={ipAllowlist.toggleEnabled}
+            onAddIp={ipAllowlist.addIp}
+            onRemoveIp={ipAllowlist.removeIp}
           />
         )}
 
