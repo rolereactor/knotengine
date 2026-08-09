@@ -454,7 +454,10 @@ export const InvoicesController = {
         });
     }
 
-    return {
+    const isAuthenticated =
+      !!(request as any).user || !!(request as any).merchant;
+
+    const response: Record<string, unknown> = {
       object: "invoice",
       invoice_id: invoice.invoiceId,
       amount_usd: invoice.amountUsd,
@@ -463,27 +466,29 @@ export const InvoicesController = {
         invoice.cryptoAmountReceived || 0,
       ),
       crypto_currency: invoice.cryptoCurrency,
-      pay_address: invoice.payAddress,
       status: invoice.status,
       confirmations: invoice.confirmations,
       fee_usd: invoice.feeUsd,
       fee_crypto: invoice.feeCrypto,
       required_confirmations: invoice.requiredConfirmations,
-      tx_hash: invoice.txHash || null,
       expires_at: invoice.expiresAt.toISOString(),
       paid_at: invoice.paidAt?.toISOString() || null,
       created_at: invoice.createdAt.toISOString(),
       metadata: invoice.metadata,
       description: invoice.description || null,
       checkout_url: `${process.env.CHECKOUT_BASE_URL || "http://localhost:5051"}/checkout/${invoice.invoiceId}`,
-      merchant: {
+    };
+
+    if (isAuthenticated) {
+      response.pay_address = invoice.payAddress;
+      response.tx_hash = invoice.txHash || null;
+      response.merchant = {
         name: invoice.merchantId.name,
         logo_url: invoice.merchantId.logoUrl || null,
         return_url: invoice.merchantId.returnUrl || null,
         theme: invoice.merchantId.theme || "system",
         brand_color: invoice.merchantId.brandColor || "#ffffff",
         branding_enabled: invoice.merchantId.brandingEnabled ?? true,
-        // Enforce plan restriction: Starter tier CANNOT remove branding
         remove_branding:
           (invoice.merchantId.plan || "starter") !== "starter"
             ? (invoice.merchantId.removeBranding ?? false)
@@ -491,8 +496,10 @@ export const InvoicesController = {
         branding_alignment: invoice.merchantId.brandingAlignment ?? "left",
         bip21_enabled: invoice.merchantId.bip21Enabled ?? true,
         plan: invoice.merchantId.plan || "starter",
-      },
-    };
+      };
+    }
+
+    return response;
   },
 
   listInvoices: async (request: any, reply: FastifyReply) => {

@@ -104,6 +104,15 @@ export async function invoiceRoutes(app: FastifyInstance) {
     "/v1/invoices",
     {
       preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          status: z.string().optional(),
+          include_testnet: z.enum(["true", "false"]).optional(),
+          only_testnet: z.enum(["true", "false"]).optional(),
+          page: z.coerce.number().int().min(1).optional(),
+          limit: z.coerce.number().int().min(1).max(100).optional(),
+        }),
+      },
     },
     InvoicesController.listInvoices,
   );

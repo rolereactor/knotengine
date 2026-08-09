@@ -1,10 +1,12 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import csrf from "@fastify/csrf-protection";
 import metrics from "fastify-metrics";
 import rateLimit from "@fastify/rate-limit";
 import swagger from "@fastify/swagger";
 import swaggerUi from "@fastify/swagger-ui";
+import { randomUUID } from "crypto";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -37,6 +39,7 @@ import { isSelfHosted } from "./core/self-hosted-mode.js";
 import * as Metrics from "./infra/metrics.js";
 import { initSentry, captureException } from "./infra/sentry.js";
 import { BlockchainProviderPool } from "./infra/provider-pool.js";
+import { logger } from "./infra/logger.js";
 
 import dotenv from "dotenv";
 import path from "path";
@@ -63,14 +66,14 @@ let envLoaded = false;
 for (const envPath of envFiles) {
   if (fs.existsSync(envPath)) {
     dotenv.config({ path: envPath });
-    console.log(`✅ Loaded ${path.basename(envPath)} from ${envPath}`);
+    logger.info(`✅ Loaded ${path.basename(envPath)} from ${envPath}`);
     envLoaded = true;
     break;
   }
 }
 
 if (!envLoaded) {
-  console.warn(
+  logger.warn(
     "⚠️  No .env file found. Relying on system environment variables.",
   );
 }
@@ -87,6 +90,18 @@ const server = Fastify({
 server.setValidatorCompiler(validatorCompiler);
 server.setSerializerCompiler(serializerCompiler);
 
+// Security Headers
+server.register(helmet);
+
+// X-Request-Id for debugging
+server.addHook("onRequest", async (request) => {
+  request.id = (request.headers["x-request-id"] as string) || randomUUID();
+});
+
+server.addHook("onSend", async (request, reply) => {
+  reply.header("X-Request-Id", request.id);
+});
+
 // Capture unhandled Fastify errors in Sentry
 server.setErrorHandler((err, request, reply) => {
   if (reply.statusCode >= 500) {
@@ -99,28 +114,30 @@ server.setErrorHandler((err, request, reply) => {
   reply.send(err);
 });
 
-// Swagger Documentation
-server.register(swagger, {
-  swagger: {
-    info: {
-      title: "KnotEngine API",
-      description: "Non-custodial crypto payment infrastructure API",
-      version: packageJson.version,
+// Swagger Documentation — disabled in production
+if (process.env.NODE_ENV !== "production") {
+  server.register(swagger, {
+    swagger: {
+      info: {
+        title: "KnotEngine API",
+        description: "Non-custodial crypto payment infrastructure API",
+        version: packageJson.version,
+      },
+      host: "localhost:5050",
+      schemes: ["http"],
+      consumes: ["application/json"],
+      produces: ["application/json"],
     },
-    host: "localhost:5050",
-    schemes: ["http"],
-    consumes: ["application/json"],
-    produces: ["application/json"],
-  },
-});
+  });
 
-server.register(swaggerUi, {
-  routePrefix: "/docs",
-  uiConfig: {
-    docExpansion: "list",
-    deepLinking: false,
-  },
-});
+  server.register(swaggerUi, {
+    routePrefix: "/docs",
+    uiConfig: {
+      docExpansion: "list",
+      deepLinking: false,
+    },
+  });
+}
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
@@ -208,7 +225,7 @@ server.register(metrics as any, {
 server.register(rateLimit, {
   max: 100, // 100 requests
   timeWindow: "1 minute",
-  allowList: ["127.0.0.1", "::1"], // Whitelist localhost for development
+  allowList: process.env.NODE_ENV !== "production" ? ["127.0.0.1", "::1"] : [],
   errorResponseBuilder: (_request, context) => ({
     error: {
       type: "rate_limit_error",
@@ -334,7 +351,7 @@ let webhookMetricsInterval: NodeJS.Timeout;
 function startBackgroundJobs() {
   // Initialize BullMQ Scheduled Jobs (durable, crash-resilient)
   ScheduledJobs.init().catch((err) => {
-    console.warn(
+    logger.warn(
       "⚠️ Failed to initialize ScheduledJobs, falling back to in-memory jobs:",
       err,
     );
@@ -343,7 +360,7 @@ function startBackgroundJobs() {
 
   // Initialize Webhook Queue (if Redis available)
   WebhookQueue.init().catch((err) => {
-    console.warn(
+    logger.warn(
       "⚠️ Failed to initialize WebhookQueue, using synchronous delivery:",
       err,
     );
@@ -355,18 +372,18 @@ function startBackgroundJobs() {
     try {
       await Metrics.updateWebhookQueueMetrics();
     } catch (err) {
-      console.warn("Failed to update webhook queue metrics:", err);
+      logger.warn("Failed to update webhook queue metrics:", err);
     }
   }, 10 * 1000);
 
-  console.log(
+  logger.info(
     "⏰ Background jobs started (durable BullMQ + webhook monitoring)",
   );
 }
 
 function startInMemoryJobs() {
   // Fallback for environments without Redis
-  console.log("⚠️ Using in-memory job fallback (less resilient)");
+  logger.info("⚠️ Using in-memory job fallback (less resilient)");
 
   // Expire stale invoices every 60 seconds
   const expirationInterval = setInterval(async () => {
@@ -374,7 +391,7 @@ function startInMemoryJobs() {
       await ConfirmationEngine.expireStaleInvoices();
       await Metrics.updateActiveInvoicesMetrics();
     } catch (err) {
-      console.error("Expiration job error:", err);
+      logger.error("Expiration job error:", err);
     }
   }, 60 * 1000);
 
@@ -386,7 +403,7 @@ function startInMemoryJobs() {
           await WebhookDispatcher.dispatchPending();
         }
       } catch (err) {
-        console.error("Webhook catchup job error:", err);
+        logger.error("Webhook catchup job error:", err);
       }
     },
     5 * 60 * 1000,
@@ -398,7 +415,7 @@ function startInMemoryJobs() {
       try {
         await SubscriptionBilling.getInstance().checkAndProcessBilling();
       } catch (err) {
-        console.error("Billing check error:", err);
+        logger.error("Billing check error:", err);
       }
     },
     24 * 60 * 60 * 1000,
@@ -411,7 +428,7 @@ function startInMemoryJobs() {
         await FloatManager.getInstance().investFloat();
         await FloatManager.getInstance().accrueYield();
       } catch (err) {
-        console.error("Float management error:", err);
+        logger.error("Float management error:", err);
       }
     },
     24 * 60 * 60 * 1000,
@@ -430,7 +447,7 @@ function startInMemoryJobs() {
 // Graceful Shutdown
 // ──────────────────────────────────────────────
 async function gracefulShutdown() {
-  console.log("\n🛑 Shutting down gracefully...");
+  logger.info("\n🛑 Shutting down gracefully...");
 
   // Clear any in-memory job intervals
   const intervals = (globalThis as any).__jobIntervals;
@@ -453,7 +470,7 @@ async function gracefulShutdown() {
   // Close Fastify server
   await server.close();
 
-  console.log("✅ Shutdown complete");
+  logger.info("✅ Shutdown complete");
   process.exit(0);
 }
 
@@ -474,12 +491,12 @@ const start = async () => {
 
     const port = parseInt(process.env.PORT || "3000", 10);
     await server.listen({ port, host: "0.0.0.0" });
-    console.log(
+    logger.info(
       `🚀 KnotEngine v${packageJson.version} running on http://localhost:${port}`,
     );
 
-    console.log("⚡ Socket.io ready for real-time updates");
-    console.log("📋 Phase 2: Monitoring & Persistence — ACTIVE");
+    logger.info("⚡ Socket.io ready for real-time updates");
+    logger.info("📋 Phase 2: Monitoring & Persistence — ACTIVE");
   } catch (err) {
     server.log.error(err);
     gracefulShutdown();

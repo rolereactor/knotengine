@@ -10,6 +10,7 @@ import { z } from "zod";
 import { PaymentLink } from "@qodinger/knot-database";
 import { requireAuth } from "../middleware/auth.middleware.js";
 import { apiError } from "../utils/api-error.js";
+import rateLimit from "@fastify/rate-limit";
 import * as crypto from "crypto";
 
 const sanitizeDescription = (val?: string) =>
@@ -405,6 +406,20 @@ export async function paymentLinkRoutes(app: FastifyInstance) {
   server.post<{ Params: { linkId: string } }>(
     "/v1/payment-links/:linkId/invoice",
     {
+      preHandler: rateLimit({
+        max: 10,
+        timeWindow: "1 minute",
+        keyGenerator: (req) => req.ip || req.socket.remoteAddress || "unknown",
+        errorResponseBuilder: () => ({
+          error: {
+            type: "rate_limit_error",
+            code: "rate_limit_exceeded",
+            message: "Rate limit exceeded. Maximum 10 requests per minute.",
+            doc_url:
+              "https://docs.knotengine.com/api/errors#rate_limit_exceeded",
+          },
+        }),
+      }),
       schema: {
         params: z.object({
           linkId: z.string(),

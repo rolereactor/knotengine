@@ -1,4 +1,5 @@
 import {
+  SUPPORTED_CURRENCIES,
   stripHtmlTags,
   limitLength,
   MAX_TEXT_LENGTH,
@@ -506,7 +507,7 @@ export async function donationRoutes(app: FastifyInstance) {
         }),
         body: z.object({
           amount_usd: z.number().positive(),
-          currency: z.string(),
+          currency: z.enum(SUPPORTED_CURRENCIES),
           donor_name: z.string().max(100).optional(),
           message: z.string().max(2000).optional(),
         }),
@@ -968,6 +969,7 @@ export async function donationRoutes(app: FastifyInstance) {
   server.post<{ Params: { id: string; msgId: string } }>(
     "/v1/donations/:id/alerts/:msgId/read",
     {
+      preHandler: requireAuth,
       schema: {
         params: z.object({
           id: z.string(),

@@ -31,10 +31,7 @@ import { ApiKeyController } from "../controllers/merchant/api-key.controller.js"
 import { WebhookEndpointController } from "../controllers/merchant/webhook-endpoint.controller.js";
 import { MerchantTeamController } from "../controllers/merchant-team.controller.js";
 import { ipAllowlistMiddleware } from "../infra/ip-allowlist.js";
-
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { escapeRegExp } from "../middleware/auth.middleware.js";
 
 const sanitizeString = (val?: string) =>
   val ? limitLength(stripHtmlTags(val).trim(), MAX_TEXT_LENGTH) : val;
@@ -481,6 +478,7 @@ export async function merchantRoutes(app: FastifyInstance) {
   server.post(
     "/v1/merchants/promo/generate",
     {
+      preHandler: requireAuth,
       schema: {
         body: z.object({
           amountUsd: z.number().positive(),
@@ -723,21 +721,22 @@ export async function merchantRoutes(app: FastifyInstance) {
         return apiError(reply, 401, "unauthorized", "Authentication required.");
       }
 
-      const [total, success, failed, pending] = await Promise.all([
-        WebhookDelivery.countDocuments({ merchantId: merchant.merchantId }),
-        WebhookDelivery.countDocuments({
-          merchantId: merchant.merchantId,
-          status: "success",
-        }),
-        WebhookDelivery.countDocuments({
-          merchantId: merchant.merchantId,
-          status: "failed",
-        }),
-        WebhookDelivery.countDocuments({
-          merchantId: merchant.merchantId,
-          status: "pending",
-        }),
+      const [result] = await WebhookDelivery.aggregate([
+        { $match: { merchantId: merchant.merchantId } },
+        {
+          $facet: {
+            total: [{ $count: "count" }],
+            success: [{ $match: { status: "success" } }, { $count: "count" }],
+            failed: [{ $match: { status: "failed" } }, { $count: "count" }],
+            pending: [{ $match: { status: "pending" } }, { $count: "count" }],
+          },
+        },
       ]);
+
+      const total = result.total[0]?.count || 0;
+      const success = result.success[0]?.count || 0;
+      const failed = result.failed[0]?.count || 0;
+      const pending = result.pending[0]?.count || 0;
 
       const successRate = total > 0 ? (success / total) * 100 : 0;
 

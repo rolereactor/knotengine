@@ -2,6 +2,7 @@ import * as crypto from "crypto";
 import { FastifyReply, FastifyRequest } from "fastify";
 import { ConfirmationEngine } from "../core/confirmation-engine.js";
 import { apiError } from "../utils/api-error.js";
+import { safeCompare } from "../utils/crypto.js";
 
 // ============================================================
 // Provider-specific types
@@ -86,7 +87,7 @@ export const WebhooksController = {
         .update(rawBody)
         .digest("hex");
 
-      if (signature !== expectedSig) {
+      if (!safeCompare(signature, expectedSig)) {
         // Alchemy's "Test" button sends a request with no signature.
         // We allow it to return 200 so the button turns green, but we log a warning.
         if (!signature) {
@@ -197,7 +198,10 @@ export const WebhooksController = {
         .update(rawBody)
         .digest("hex");
 
-      if (signature !== expectedSigBase64 && signature !== expectedSigHex) {
+      if (
+        !safeCompare(signature, expectedSigBase64) &&
+        !safeCompare(signature, expectedSigHex)
+      ) {
         request.server.log.warn("⚠️ Tatum webhook signature mismatch");
         return apiError(reply, 401, "unauthorized", "Invalid signature.");
       }

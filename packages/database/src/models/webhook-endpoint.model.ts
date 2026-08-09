@@ -43,7 +43,7 @@ const WebhookEndpointSchema: Schema = new Schema(
       required: true,
       index: true,
     },
-    endpointId: { type: String },
+    endpointId: { type: String, unique: true },
     url: { type: String, required: true },
     secret: { type: String, required: true },
     events: { type: [String], default: [] },

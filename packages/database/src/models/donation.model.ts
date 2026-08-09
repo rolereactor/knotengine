@@ -121,7 +121,7 @@ const DonationSchema: Schema = new Schema(
   { timestamps: true },
 );
 
-DonationSchema.index({ merchantId: 1, isActive: 1 });
+DonationSchema.index({ slug: 1, isActive: 1 });
 
 const DonationMessageSchema: Schema = new Schema(
   {

@@ -50,7 +50,7 @@ export const requireAuth = async (
 
   if (oauthId && safeCompare(secret, process.env.INTERNAL_SECRET || "")) {
     const query: Record<string, unknown> = {
-      oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
+      oauthId,
       isActive: true,
       isDeleted: { $ne: true },
     };

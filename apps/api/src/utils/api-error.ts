@@ -86,6 +86,9 @@ export function apiError(
   message: string,
   param?: string,
 ): ReturnType<FastifyReply["send"]> {
+  if (status < 400 || status > 599) {
+    status = 500;
+  }
   const body: ApiErrorBody = {
     error: {
       type: typeFor(status),

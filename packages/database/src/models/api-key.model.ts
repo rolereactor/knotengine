@@ -43,7 +43,7 @@ const ApiKeySchema: Schema = new Schema(
       required: true,
       index: true,
     },
-    keyId: { type: String },
+    keyId: { type: String, unique: true },
     keyHash: { type: String, required: true },
     label: { type: String, required: true },
     scope: {

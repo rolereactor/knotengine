@@ -236,5 +236,7 @@ const MerchantSchema: Schema = new Schema(
 );
 
 // apiKeyHash index is auto-created by unique: true
+MerchantSchema.index({ oauthId: 1, isActive: 1, isDeleted: 1 });
+MerchantSchema.index({ userId: 1, isActive: 1, isDeleted: 1 });
 
 export const Merchant = mongoose.model<IMerchant>("Merchant", MerchantSchema);

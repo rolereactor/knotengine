@@ -30,7 +30,7 @@ export interface IPaymentLink extends Document {
   /** Link expiration time (null = never) */
   expiresAt?: Date;
   /** URL to redirect after successful payment */
-  redirectUrl?: Date;
+  redirectUrl?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -59,7 +59,6 @@ const PaymentLinkSchema: Schema = new Schema(
 );
 
 PaymentLinkSchema.index({ merchantId: 1, isActive: 1 });
-PaymentLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const PaymentLink = mongoose.model<IPaymentLink>(
   "PaymentLink",

@@ -1,5 +1,5 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import { MerchantMember } from "@qodinger/knot-database";
+import { Merchant, User, MerchantMember } from "@qodinger/knot-database";
 import { escapeRegExp } from "./auth.middleware.js";
 import { safeCompare } from "../utils/crypto.js";
 import { apiError } from "../utils/api-error.js";
@@ -58,9 +58,6 @@ export const requireMerchantAccess = async (
   ) {
     return apiError(reply, 401, "unauthorized", "Authentication required.");
   }
-
-  const User = (await import("@qodinger/knot-database")).User;
-  const Merchant = (await import("@qodinger/knot-database")).Merchant;
 
   const user = await User.findOne({
     oauthId: { $regex: new RegExp(`^${escapeRegExp(oauthId)}(:|$)`) },
