@@ -32,6 +32,17 @@ export interface IMerchant extends Document {
   removeBranding: boolean;
   /** Checkout header alignment */
   brandingAlignment?: "left" | "center";
+  /** White Label Settings */
+  whiteLabelEnabled: boolean;
+  customCss?: string;
+  customDomain?: string;
+  customDomainVerified: boolean;
+  checkoutLayout: "default" | "minimal" | "full";
+  invoiceFooterHtml?: string;
+  hideNetworkInfo: boolean;
+  hideQrCode: boolean;
+  redirectAfterPayment?: string;
+  customReceiptMessage?: string;
   enabledCurrencies: string[];
   /** Current derivation index for unique address generation */
   derivationIndex: number;
@@ -124,6 +135,21 @@ const MerchantSchema: Schema = new Schema(
       enum: ["left", "center"],
       default: "left",
     },
+    /** White Label Settings */
+    whiteLabelEnabled: { type: Boolean, default: false },
+    customCss: { type: String },
+    customDomain: { type: String },
+    customDomainVerified: { type: Boolean, default: false },
+    checkoutLayout: {
+      type: String,
+      enum: ["default", "minimal", "full"],
+      default: "default",
+    },
+    invoiceFooterHtml: { type: String },
+    hideNetworkInfo: { type: Boolean, default: false },
+    hideQrCode: { type: Boolean, default: false },
+    redirectAfterPayment: { type: String },
+    customReceiptMessage: { type: String },
     enabledCurrencies: { type: [String], default: [] },
     webhookEvents: {
       type: [String],

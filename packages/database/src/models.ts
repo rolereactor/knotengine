@@ -8,3 +8,6 @@ export * from "./models/notification.model";
 export * from "./models/verification-token.model";
 export * from "./models/audit-log.model";
 export * from "./models/promo-code.model";
+export * from "./models/payment-link.model";
+export * from "./models/donation.model";
+export * from "./models/affiliate-payout.model";

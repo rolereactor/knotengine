@@ -11,3 +11,6 @@ export * from "./webhook-delivery.model";
 export * from "./webhook-event.model";
 export * from "./api-key.model";
 export * from "./webhook-endpoint.model";
+export * from "./payment-link.model";
+export * from "./donation.model";
+export * from "./affiliate-payout.model";
