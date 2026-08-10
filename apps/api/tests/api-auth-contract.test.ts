@@ -111,6 +111,14 @@ vi.mock("@qodinger/knot-database", () => ({
   AuditLog: { countDocuments: vi.fn() },
   TopUpClaim: { findOne: vi.fn(), create: vi.fn() },
   PromoCode: { findOne: vi.fn(), create: vi.fn(), findByIdAndUpdate: vi.fn() },
+  Refund: {
+    findOne: vi.fn(),
+    find: vi.fn(),
+    create: vi.fn(),
+    countDocuments: vi.fn(),
+    updateOne: vi.fn(),
+    findByIdAndUpdate: vi.fn(),
+  },
   connectToDatabase: vi.fn(),
   mongoose: { connection: { db: { command: vi.fn() } } },
 }));
@@ -211,6 +219,7 @@ import { authRoutes } from "../src/routes/auth.js";
 import { invoiceRoutes } from "../src/routes/invoices.js";
 import { floatRoutes } from "../src/routes/float.js";
 import { twoFactorRoutes } from "../src/routes/two-factor.js";
+import { refundRoutes } from "../src/routes/refunds.js";
 
 // ─── Test app factory ─────────────────────────────────────────────────────────
 
@@ -228,6 +237,7 @@ async function buildTestApp(): Promise<FastifyInstance> {
   await app.register(invoiceRoutes);
   await app.register(floatRoutes);
   await app.register(twoFactorRoutes);
+  await app.register(refundRoutes);
   await app.ready();
   return app;
 }
@@ -486,6 +496,16 @@ describe("API Auth & Response Contract", () => {
       { method: "GET", url: "/v1/invoices" },
       { method: "POST", url: "/v1/invoices/inv_test/cancel" },
       { method: "POST", url: "/v1/invoices/inv_test/resolve" },
+
+      // ── /v1/refunds — refund lifecycle ─────────────────────────────────────
+      {
+        method: "POST",
+        url: "/v1/refunds",
+        body: { invoice_id: "inv_test", amount_usd: 10, reason: "test" },
+      },
+      { method: "GET", url: "/v1/refunds" },
+      { method: "GET", url: "/v1/refunds/ref_test" },
+      { method: "POST", url: "/v1/refunds/ref_test/cancel" },
 
       // ── /v1/float — float management ─────────────────────────────────────
       { method: "POST", url: "/v1/float/invest", body: {} },

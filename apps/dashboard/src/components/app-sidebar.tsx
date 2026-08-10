@@ -15,6 +15,7 @@ import {
   Puzzle,
   Paintbrush,
   ShoppingCart,
+  RotateCcw,
 } from "lucide-react";
 import {
   HomeIcon,
@@ -54,6 +55,7 @@ const animatedIconsMap: Record<string, React.ElementType> = {
   Dashboard: HomeIcon,
   Analytics: ChartBarIncreasingIcon,
   Payments: CircleDollarSignIcon,
+  Refunds: CircleDollarSignIcon,
   Solutions: LinkIcon,
   "Activity Log": ActivityIcon,
   Balances: DollarSignIcon,
@@ -74,6 +76,7 @@ const navGroups = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
       { icon: BarChart3, label: "Analytics", href: "/dashboard/analytics" },
       { icon: CreditCard, label: "Payments", href: "/dashboard/payments" },
+      { icon: RotateCcw, label: "Refunds", href: "/dashboard/refunds" },
       { icon: Puzzle, label: "Solutions", href: "/dashboard/solutions" },
       { icon: Activity, label: "Activity Log", href: "/dashboard/activity" },
       { icon: Wallet, label: "Balances", href: "/dashboard/balances" },

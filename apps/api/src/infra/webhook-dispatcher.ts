@@ -2,6 +2,7 @@ import {
   Invoice,
   IInvoice,
   Merchant,
+  Refund,
   WebhookDelivery,
   WebhookEndpoint,
 } from "@qodinger/knot-database";
@@ -397,6 +398,220 @@ export class WebhookDispatcher {
       logger.error({ message }, "❌ TEST Webhook FAILURE");
       throw error;
     }
+  }
+
+  /**
+   * Dispatches a webhook notification for a refund event.
+   * Supports: refund.created, refund.completed, refund.failed
+   */
+  public static async dispatchRefund(
+    refundId: string,
+    event: string,
+    merchantIdOverride?: string,
+  ): Promise<boolean> {
+    const refund = await Refund.findOne({ refundId });
+    if (!refund) {
+      logger.error({ refundId }, "Refund not found");
+      return false;
+    }
+
+    const merchantId = merchantIdOverride || refund.merchantId.toString();
+    const merchant = await Merchant.findById(merchantId);
+    const merchantPlan = merchant?.plan || "starter";
+
+    if (WebhookQueue.isReady()) {
+      await WebhookQueue.dispatchRefund(refundId, event, merchantPlan);
+      return true;
+    }
+
+    return this.dispatchRefundSync(refundId, event);
+  }
+
+  /**
+   * Synchronous webhook delivery for refund events to all matching endpoints.
+   */
+  public static async dispatchRefundSync(
+    refundId: string,
+    event: string,
+  ): Promise<boolean> {
+    const refund = await Refund.findOne({ refundId });
+
+    if (!refund) {
+      logger.error({ refundId }, "Refund not found");
+      return false;
+    }
+
+    const merchant = await Merchant.findById(refund.merchantId);
+    if (!merchant) return false;
+
+    const endpoints = await WebhookEndpoint.find({
+      merchantId: merchant._id,
+      isActive: true,
+    });
+
+    if (endpoints.length === 0) {
+      return false;
+    }
+
+    const payload = {
+      id: `evt_${crypto.randomBytes(12).toString("hex")}`,
+      event,
+      created: Math.floor(Date.now() / 1000),
+      refund_id: refund.refundId,
+      invoice_id: refund.invoiceId,
+      status: refund.status,
+      amount_usd: refund.amountUsd,
+      crypto_currency: refund.cryptoCurrency,
+      crypto_amount: refund.cryptoAmount || null,
+      refund_address: refund.refundAddress || null,
+      tx_hash: refund.txHash || null,
+      reason: refund.reason,
+      failure_reason: refund.failureReason || null,
+      processed_at: refund.processedAt?.toISOString() || null,
+    };
+
+    const payloadString = JSON.stringify(payload);
+    let anySuccess = false;
+    const deliveryRecords: Array<{
+      merchantId: string;
+      invoiceId: string;
+      eventType: string;
+      url: string;
+      attempt: number;
+      status: "success" | "failed";
+      statusCode?: number;
+      responseBody?: string;
+      errorMessage?: string;
+      duration: number;
+    }> = [];
+    const endpointUpdates: Array<{
+      filter: { _id: string };
+      update: { $set: Record<string, unknown> };
+    }> = [];
+
+    for (const endpoint of endpoints) {
+      if (
+        endpoint.eventMode === "filtered" &&
+        !endpoint.events.includes(event)
+      ) {
+        continue;
+      }
+
+      const secret = endpoint.secret;
+      const signature = Derivator.signWebhookPayload(payloadString, secret);
+      const startTime = Date.now();
+
+      try {
+        logger.info(
+          { event, url: endpoint.url, endpointId: endpoint.endpointId },
+          "📡 Dispatching refund webhook",
+        );
+
+        const response = await fetch(endpoint.url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-knot-signature": signature,
+            "x-knot-event": event,
+            "x-knot-refund": refund.refundId,
+            "x-knot-endpoint": endpoint.endpointId,
+            "User-Agent": "KnotEngine-Webhook-Dispatcher/2.0",
+          },
+          body: payloadString,
+          signal: AbortSignal.timeout(15000),
+        });
+
+        const duration = Date.now() - startTime;
+
+        if (response.ok) {
+          anySuccess = true;
+
+          endpointUpdates.push({
+            filter: { _id: endpoint._id.toString() },
+            update: {
+              $set: { lastSuccessAt: new Date(), consecutiveFailures: 0 },
+            },
+          });
+
+          deliveryRecords.push({
+            merchantId: refund.merchantId.toString(),
+            invoiceId: refund.invoiceId,
+            eventType: event,
+            url: endpoint.url,
+            attempt: 1,
+            status: "success",
+            statusCode: response.status,
+            responseBody: (await response.text()).substring(0, 1000),
+            duration,
+          });
+
+          Metrics.recordWebhookDelivery(event, true, duration / 1000);
+
+          logger.info(
+            { refundId, event, url: endpoint.url },
+            "✅ Refund webhook SUCCESS",
+          );
+        } else {
+          throw new Error(`Endpoint returned ${response.status}`);
+        }
+      } catch (error: unknown) {
+        const duration = Date.now() - startTime;
+        const message = error instanceof Error ? error.message : String(error);
+        const statusCode =
+          error instanceof Error && "statusCode" in error
+            ? (error as { statusCode: number }).statusCode
+            : undefined;
+
+        const newFailures = endpoint.consecutiveFailures + 1;
+        const shouldDisable = newFailures >= this.MAX_CONSECUTIVE_FAILURES;
+
+        endpointUpdates.push({
+          filter: { _id: endpoint._id.toString() },
+          update: {
+            $set: {
+              lastFailureAt: new Date(),
+              consecutiveFailures: newFailures,
+              ...(shouldDisable
+                ? { isActive: false, disabledAt: new Date() }
+                : {}),
+            },
+          },
+        });
+
+        deliveryRecords.push({
+          merchantId: refund.merchantId.toString(),
+          invoiceId: refund.invoiceId,
+          eventType: event,
+          url: endpoint.url,
+          attempt: 1,
+          status: "failed",
+          statusCode,
+          errorMessage: message.substring(0, 500),
+          duration,
+        });
+
+        Metrics.recordWebhookDelivery(event, false, duration / 1000);
+
+        logger.error(
+          { refundId, url: endpoint.url, message },
+          "❌ Refund webhook FAILURE",
+        );
+      }
+    }
+
+    if (deliveryRecords.length > 0) {
+      await WebhookDelivery.insertMany(deliveryRecords);
+    }
+
+    if (endpointUpdates.length > 0) {
+      await WebhookEndpoint.bulkWrite(
+        endpointUpdates.map(({ filter, update }) => ({
+          updateOne: { filter, update },
+        })),
+      );
+    }
+
+    return anySuccess;
   }
 
   /**

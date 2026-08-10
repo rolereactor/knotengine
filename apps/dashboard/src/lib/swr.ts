@@ -29,5 +29,7 @@ export const swrKeys = {
     params
       ? (["/v1/merchants/me/notifications", params] as const)
       : "/v1/merchants/me/notifications",
+  refunds: (params?: Record<string, string>) =>
+    params ? (["/v1/refunds", params] as const) : "/v1/refunds",
   ipAllowlist: "/v1/merchants/me/ip-allowlist" as const,
 };

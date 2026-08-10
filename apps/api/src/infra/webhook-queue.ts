@@ -50,6 +50,10 @@ export class WebhookQueue {
       case "invoice.expired":
       case "invoice.failed":
         return this.Priority.EXPIRED[planIndex];
+      case "refund.created":
+      case "refund.completed":
+      case "refund.failed":
+        return this.Priority.OTHER[planIndex];
       default:
         return this.Priority.OTHER[planIndex];
     }
@@ -225,6 +229,39 @@ export class WebhookQueue {
     merchantPlan: "starter" | "professional" | "enterprise" = "starter",
   ): Promise<Job | null> {
     return this.dispatch(invoiceId, "invoice.failed", merchantPlan);
+  }
+
+  /**
+   * Dispatches a refund webhook event with plan-based priority.
+   */
+  public static async dispatchRefund(
+    refundId: string,
+    event: string,
+    merchantPlan: "starter" | "professional" | "enterprise" = "starter",
+  ): Promise<Job | null> {
+    if (!this.queue || !this.isInitialized) {
+      console.log(
+        "📬 WebhookQueue not ready, using synchronous delivery for refund",
+      );
+      await WebhookDispatcher.dispatchRefund(refundId, event);
+      return null;
+    }
+
+    const priority = this.getPriorityForEvent(event, merchantPlan);
+    const job = await this.queue.add(
+      "webhook",
+      { refundId, event, priority, merchantPlan },
+      {
+        priority,
+        jobId: `refund:${refundId}:${event}:${Date.now()}`,
+      },
+    );
+
+    console.log(
+      `📬 Refund webhook job ${job.id} queued: ${event} for ${refundId} (plan: ${merchantPlan}, priority: ${priority})`,
+    );
+
+    return job;
   }
 
   /**

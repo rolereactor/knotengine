@@ -44,6 +44,12 @@ export type ErrorCode =
   | "donation_not_found"
   | "donation_expired"
   | "donation_limit_reached"
+  // Refunds
+  | "refund_not_found"
+  | "refund_not_allowed"
+  | "refund_exceeds_amount"
+  | "refund_already_pending"
+  | "refund_not_cancellable"
   // Affiliates
   | "affiliate_not_found"
   | "affiliate_payout_not_found"

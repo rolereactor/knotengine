@@ -17,3 +17,4 @@ export * from "./affiliate-payout.model";
 export * from "./pos-category.model";
 export * from "./pos-product.model";
 export * from "./pos-register.model";
+export * from "./refund.model";
