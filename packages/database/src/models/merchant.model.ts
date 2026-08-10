@@ -94,6 +94,13 @@ export interface IMerchant extends Document {
     lowBalance: boolean;
     securityAlerts: boolean;
   };
+  /** Scheduled Export Settings */
+  scheduledExport: {
+    enabled: boolean;
+    frequency: "daily" | "weekly";
+    format: "csv" | "json";
+    lastExportedAt?: Date;
+  };
   isActive: boolean;
   /** Suspension tracking */
   suspendedAt?: Date;
@@ -239,6 +246,24 @@ const MerchantSchema: Schema = new Schema(
         subscriptionCharged: true,
         lowBalance: true,
         securityAlerts: true,
+      },
+    },
+    /** Scheduled Export Settings */
+    scheduledExport: {
+      type: {
+        enabled: { type: Boolean, default: false },
+        frequency: {
+          type: String,
+          enum: ["daily", "weekly"],
+          default: "daily",
+        },
+        format: { type: String, enum: ["csv", "json"], default: "csv" },
+        lastExportedAt: { type: Date },
+      },
+      default: {
+        enabled: false,
+        frequency: "daily",
+        format: "csv",
       },
     },
     isActive: { type: Boolean, default: true },

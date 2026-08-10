@@ -257,8 +257,9 @@ export async function invoiceRoutes(app: FastifyInstance) {
           include_testnet: z.enum(["true", "false"]).optional(),
           only_testnet: z.enum(["true", "false"]).optional(),
           search: z.string().max(200).optional(),
-          page: z.coerce.number().int().min(1).optional(),
-          limit: z.coerce.number().int().min(1).max(100).optional(),
+          format: z.enum(["csv", "json"]).optional(),
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
         }),
         response: {
           200: {
@@ -409,6 +410,8 @@ export async function invoiceRoutes(app: FastifyInstance) {
           only_testnet: z.enum(["true", "false"]).optional(),
           search: z.string().max(200).optional(),
           format: z.enum(["csv", "json"]).optional(),
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
         }),
       },
     },

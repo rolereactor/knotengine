@@ -78,6 +78,7 @@ export class EmailService {
     subject: string;
     html: string;
     logContext: string;
+    attachment?: { filename: string; content: string; contentType: string };
   }): Promise<{ success: boolean; error?: string }> {
     if (this.isProduction()) {
       // 🚀 PRODUCTION: USE RESEND
@@ -90,12 +91,26 @@ export class EmailService {
       }
 
       try {
-        const { data, error } = await resend.emails.send({
+        const emailParams: any = {
           from: this.getFromEmail(),
           to: params.to,
           subject: params.subject,
           html: params.html,
-        });
+        };
+
+        if (params.attachment) {
+          emailParams.attachments = [
+            {
+              filename: params.attachment.filename,
+              content: Buffer.from(params.attachment.content).toString(
+                "base64",
+              ),
+              contentType: params.attachment.contentType,
+            },
+          ];
+        }
+
+        const { data, error } = await resend.emails.send(emailParams);
 
         if (error) {
           console.error(`❌ Resend error (${params.logContext}):`, error);
@@ -121,12 +136,24 @@ export class EmailService {
       }
 
       try {
-        const info = await transporter.sendMail({
+        const mailOptions: any = {
           from: this.getFromEmail(),
           to: params.to,
           subject: params.subject,
           html: params.html,
-        });
+        };
+
+        if (params.attachment) {
+          mailOptions.attachments = [
+            {
+              filename: params.attachment.filename,
+              content: params.attachment.content,
+              contentType: params.attachment.contentType,
+            },
+          ];
+        }
+
+        const info = await transporter.sendMail(mailOptions);
 
         console.log(
           `✅ ${params.logContext} email sent via Gmail to ${params.to} (${info.messageId})`,
@@ -198,6 +225,28 @@ export class EmailService {
       subject: `Billing Notification: ${params.type.replace("_", " ")}`,
       html: EmailTemplates.getBillingNotificationHtml(params),
       logContext: "Billing",
+    });
+  }
+
+  /**
+   * Send scheduled export email
+   */
+  static async sendScheduledExport(params: {
+    to: string;
+    merchantName: string;
+    frequency: string;
+    dateRange: { from: string; to: string };
+    invoiceCount: number;
+    totalUsd: number;
+    format: string;
+    attachment?: { filename: string; content: string; contentType: string };
+  }): Promise<{ success: boolean; error?: string }> {
+    return this.sendEmail({
+      to: params.to,
+      subject: `${params.frequency === "daily" ? "Daily" : "Weekly"} Invoice Export - KnotEngine`,
+      html: EmailTemplates.getScheduledExportHtml(params),
+      logContext: "Scheduled Export",
+      attachment: params.attachment,
     });
   }
 

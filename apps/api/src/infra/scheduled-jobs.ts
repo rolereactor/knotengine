@@ -12,10 +12,12 @@ export class ScheduledJobs {
   private static billingQueue: Queue | null = null;
   private static floatManagementQueue: Queue | null = null;
   private static lightningPollingQueue: Queue | null = null;
+  private static scheduledExportQueue: Queue | null = null;
   private static invoiceExpirationWorker: Worker | null = null;
   private static billingWorker: Worker | null = null;
   private static floatManagementWorker: Worker | null = null;
   private static lightningPollingWorker: Worker | null = null;
+  private static scheduledExportWorker: Worker | null = null;
   private static isInitialized = false;
 
   public static async init(): Promise<void> {
@@ -85,6 +87,16 @@ export class ScheduledJobs {
       },
     });
 
+    this.scheduledExportQueue = new Queue("scheduled-export", {
+      connection: bullmqConnection,
+      defaultJobOptions: {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 10000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    });
+
     this.invoiceExpirationWorker = new Worker(
       "invoice-expiration",
       async (_job: Job) => {
@@ -147,6 +159,27 @@ export class ScheduledJobs {
       },
     );
 
+    this.scheduledExportWorker = new Worker(
+      "scheduled-export",
+      async (job: Job) => {
+        const { merchantId, frequency, batch } = job.data;
+        const { processScheduledExport, processAllScheduledExports } =
+          await import("../core/scheduled-export.js");
+
+        if (batch) {
+          const result = await processAllScheduledExports();
+          return { success: true, ...result };
+        }
+
+        await processScheduledExport(merchantId, frequency);
+        return { processed: true, merchantId, frequency };
+      },
+      {
+        connection: bullmqConnection,
+        concurrency: 1,
+      },
+    );
+
     this.invoiceExpirationWorker.on("failed", (job, err) => {
       console.error(
         `❌ Invoice expiration job ${job?.id} failed:`,
@@ -166,6 +199,10 @@ export class ScheduledJobs {
       console.error(`❌ Lightning polling job ${job?.id} failed:`, err.message);
     });
 
+    this.scheduledExportWorker.on("failed", (job, err) => {
+      console.error(`❌ Scheduled export job ${job?.id} failed:`, err.message);
+    });
+
     await this.scheduleRecurringJobs();
 
     this.isInitialized = true;
@@ -177,7 +214,8 @@ export class ScheduledJobs {
       !this.invoiceExpirationQueue ||
       !this.billingQueue ||
       !this.floatManagementQueue ||
-      !this.lightningPollingQueue
+      !this.lightningPollingQueue ||
+      !this.scheduledExportQueue
     ) {
       return;
     }
@@ -232,6 +270,17 @@ export class ScheduledJobs {
       },
     );
 
+    // Scheduled exports: run daily at 6am UTC to catch both daily and weekly
+    await this.scheduledExportQueue.add(
+      "process-scheduled-exports",
+      { batch: true },
+      {
+        repeat: { pattern: "0 6 * * *" },
+        jobId: "scheduled-export-recurring",
+        removeOnComplete: true,
+      },
+    );
+
     console.log("🗓️ Recurring jobs scheduled");
   }
 
@@ -244,14 +293,16 @@ export class ScheduledJobs {
     billing: { waiting: number; active: number } | null;
     floatManagement: { waiting: number; active: number } | null;
     lightningPolling: { waiting: number; active: number } | null;
+    scheduledExport: { waiting: number; active: number } | null;
   } | null> {
     if (!this.isInitialized) return null;
 
-    const [ie, billing, float, lightning] = await Promise.all([
+    const [ie, billing, float, lightning, scheduledExport] = await Promise.all([
       this.invoiceExpirationQueue?.getJobCounts(),
       this.billingQueue?.getJobCounts(),
       this.floatManagementQueue?.getJobCounts(),
       this.lightningPollingQueue?.getJobCounts(),
+      this.scheduledExportQueue?.getJobCounts(),
     ]);
 
     return {
@@ -267,6 +318,12 @@ export class ScheduledJobs {
       lightningPolling: lightning
         ? { waiting: lightning.waiting || 0, active: lightning.active || 0 }
         : null,
+      scheduledExport: scheduledExport
+        ? {
+            waiting: scheduledExport.waiting || 0,
+            active: scheduledExport.active || 0,
+          }
+        : null,
     };
   }
 
@@ -276,6 +333,7 @@ export class ScheduledJobs {
       this.billingWorker?.close(),
       this.floatManagementWorker?.close(),
       this.lightningPollingWorker?.close(),
+      this.scheduledExportWorker?.close(),
     ]);
 
     await Promise.all([
@@ -283,16 +341,19 @@ export class ScheduledJobs {
       this.billingQueue?.close(),
       this.floatManagementQueue?.close(),
       this.lightningPollingQueue?.close(),
+      this.scheduledExportQueue?.close(),
     ]);
 
     this.invoiceExpirationWorker = null;
     this.billingWorker = null;
     this.floatManagementWorker = null;
     this.lightningPollingWorker = null;
+    this.scheduledExportWorker = null;
     this.invoiceExpirationQueue = null;
     this.billingQueue = null;
     this.floatManagementQueue = null;
     this.lightningPollingQueue = null;
+    this.scheduledExportQueue = null;
     this.isInitialized = false;
 
     console.log("🗓️ ScheduledJobs shutdown complete");

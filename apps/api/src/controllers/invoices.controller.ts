@@ -649,6 +649,8 @@ export const InvoicesController = {
       include_testnet = "false",
       only_testnet = "false",
       search,
+      from,
+      to,
       page = "1",
       limit = "20",
     } = request.query;
@@ -656,6 +658,46 @@ export const InvoicesController = {
     const filter: Record<string, unknown> = { merchantId: merchant._id };
     if (status) {
       filter.status = status;
+    }
+    if (from || to) {
+      const dateFilter: Record<string, Date> = {};
+      if (from) {
+        const startDate = new Date(from);
+        if (isNaN(startDate.getTime())) {
+          return apiError(
+            reply,
+            400,
+            "invalid_request",
+            "Invalid 'from' date format. Use ISO 8601 datetime strings.",
+          );
+        }
+        dateFilter.$gte = startDate;
+      }
+      if (to) {
+        const endDate = new Date(to);
+        if (isNaN(endDate.getTime())) {
+          return apiError(
+            reply,
+            400,
+            "invalid_request",
+            "Invalid 'to' date format. Use ISO 8601 datetime strings.",
+          );
+        }
+        dateFilter.$lte = endDate;
+      }
+      if (
+        dateFilter.$gte &&
+        dateFilter.$lte &&
+        dateFilter.$gte > dateFilter.$lte
+      ) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "The 'from' date must be before or equal to the 'to' date.",
+        );
+      }
+      filter.createdAt = dateFilter;
     }
     if (only_testnet === "true") {
       // Exclusively testnet invoices
@@ -786,6 +828,8 @@ export const InvoicesController = {
       only_testnet = "false",
       search,
       format = "json",
+      from,
+      to,
     } = request.query;
 
     const filter: Record<string, unknown> = { merchantId: merchant._id };
@@ -802,6 +846,46 @@ export const InvoicesController = {
         { description: { $regex: search, $options: "i" } },
         { "metadata.email": { $regex: search, $options: "i" } },
       ];
+    }
+    if (from || to) {
+      const dateFilter: Record<string, Date> = {};
+      if (from) {
+        const startDate = new Date(from);
+        if (isNaN(startDate.getTime())) {
+          return apiError(
+            reply,
+            400,
+            "invalid_request",
+            "Invalid 'from' date format. Use ISO 8601 datetime strings.",
+          );
+        }
+        dateFilter.$gte = startDate;
+      }
+      if (to) {
+        const endDate = new Date(to);
+        if (isNaN(endDate.getTime())) {
+          return apiError(
+            reply,
+            400,
+            "invalid_request",
+            "Invalid 'to' date format. Use ISO 8601 datetime strings.",
+          );
+        }
+        dateFilter.$lte = endDate;
+      }
+      if (
+        dateFilter.$gte &&
+        dateFilter.$lte &&
+        dateFilter.$gte > dateFilter.$lte
+      ) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "The 'from' date must be before or equal to the 'to' date.",
+        );
+      }
+      filter.createdAt = dateFilter;
     }
 
     const invoices = await Invoice.find(filter).sort({ createdAt: -1 });

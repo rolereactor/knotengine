@@ -565,6 +565,122 @@ export const EmailTemplates = {
   },
 
   /**
+   * 📊 Scheduled Export Email
+   */
+  getScheduledExportHtml: (params: {
+    merchantName: string;
+    frequency: string;
+    dateRange: { from: string; to: string };
+    invoiceCount: number;
+    totalUsd: number;
+    format: string;
+  }) => dedent`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Scheduled Export - KnotEngine</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        :root { color-scheme: dark; supported-color-schemes: dark; }
+        @media only screen and (max-width: 600px) {
+          .container { padding: 20px 10px !important; }
+          .card { padding: 32px 24px !important; border-radius: 16px !important; }
+          .title { font-size: 20px !important; }
+          .stat-box { width: 100% !important; box-sizing: border-box !important; }
+        }
+      </style>
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #050505; font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; color: #ffffff;">
+      <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #050505;">
+        <tr>
+          <td align="center" class="container" style="padding: 40px 20px;">
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" class="card" style="max-width: 440px; background-color: #0c0c0c; border: 1px solid #1a1a1a; border-radius: 20px; overflow: hidden;">
+              
+              <!-- Brand Header -->
+              <tr>
+                <td align="center" style="padding: 32px 0 24px 0;">
+                  <div style="font-size: 16px; font-weight: 800; letter-spacing: 0.15em; color: #ffffff; text-transform: uppercase;">
+                    KNOT<span style="color: #6366f1;">ENGINE</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Icon -->
+              <tr>
+                <td align="center" style="padding: 0 32px 16px 32px;">
+                  <div style="font-size: 48px;">📊</div>
+                </td>
+              </tr>
+
+              <!-- Hero Section -->
+              <tr>
+                <td align="center" style="padding: 0 32px 32px 32px; text-align: center;">
+                  <h1 class="title" style="color: #6366f1; font-size: 22px; font-weight: 700; margin: 0 0 12px 0;">
+                    ${params.frequency === "daily" ? "Daily" : "Weekly"} Invoice Export
+                  </h1>
+                  <p style="color: #888888; font-size: 15px; line-height: 1.5; margin: 0 0 24px 0;">
+                    Hi ${params.merchantName || "Merchant"},<br/>
+                    Your ${params.frequency} invoice export is ready.
+                  </p>
+
+                  <!-- Stats Box -->
+                  <div class="stat-box" style="background-color: #1a1a1a; border: 1px solid #6366f1; border-radius: 12px; padding: 16px; margin-bottom: 24px; text-align: left;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                      <div>
+                        <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Period</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #ffffff;">${params.dateRange.from} — ${params.dateRange.to}</div>
+                      </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                      <div>
+                        <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Invoices</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #ffffff;">${params.invoiceCount}</div>
+                      </div>
+                      <div>
+                        <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Total Volume</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #10b981;">$${params.totalUsd.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div style="font-size: 12px; color: #666666; margin-bottom: 4px;">Format</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #ffffff; text-transform: uppercase;">${params.format}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="margin-bottom: 24px;">
+                    <a href="${process.env.DASHBOARD_URL || "http://localhost:5052"}/dashboard/payments" style="display: inline-block; background-color: #6366f1; color: #ffffff; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 14px;">
+                      View Dashboard
+                    </a>
+                  </div>
+
+                  <div style="height: 1px; background-color: #1a1a1a; margin-bottom: 24px; width: 100%;"></div>
+
+                  <p style="color: #666666; font-size: 12px; line-height: 1.6; margin: 0;">
+                    This is an automated export from KnotEngine.<br/>
+                    You can manage your export schedule in Settings.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- Minimal Footer -->
+              <tr>
+                <td align="center" style="padding: 20px 0; background-color: #090909; border-top: 1px solid #1a1a1a;">
+                  <p style="color: #333333; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">
+                    &copy; ${new Date().getFullYear()} KnotEngine
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `,
+
+  /**
    * 👥 Team Invitation Email
    */
   getTeamInviteHtml: (params: {

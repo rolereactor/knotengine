@@ -1509,6 +1509,144 @@ export async function merchantRoutes(app: FastifyInstance) {
   );
 
   // ──────────────────────────────────────────────
+  // GET /v1/merchants/me/reports/tax — Tax Report
+  // ──────────────────────────────────────────────
+  server.get(
+    "/v1/merchants/me/reports/tax",
+    {
+      preHandler: requireAuth,
+      schema: {
+        querystring: z.object({
+          from: z.string().datetime().optional(),
+          to: z.string().datetime().optional(),
+        }),
+      },
+    },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const merchant = request.merchant;
+      if (!merchant) {
+        return apiError(reply, 401, "unauthorized", "Authentication required.");
+      }
+
+      const { from, to } = request.query as { from?: string; to?: string };
+
+      const now = new Date();
+      const defaultFrom = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 365,
+      );
+
+      const startDate = from ? new Date(from) : defaultFrom;
+      const endDate = to ? new Date(to) : now;
+
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "Invalid date format. Use ISO 8601 datetime strings.",
+        );
+      }
+
+      if (startDate >= endDate) {
+        return apiError(
+          reply,
+          400,
+          "invalid_request",
+          "The 'from' date must be before the 'to' date.",
+        );
+      }
+
+      const matchStage: Record<string, unknown> = {
+        merchantId: merchant._id,
+        status: "confirmed",
+        "metadata.isTestnet": { $ne: true },
+        createdAt: { $gte: startDate, $lte: endDate },
+      };
+
+      const [byCurrency, totals] = await Promise.all([
+        Invoice.aggregate<{
+          _id: string;
+          revenue: number;
+          count: number;
+          crypto_amount: number;
+          fees_usd: number;
+          fees_crypto: number;
+        }>([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: "$cryptoCurrency",
+              revenue: { $sum: "$amountUsd" },
+              count: { $sum: 1 },
+              crypto_amount: { $sum: "$cryptoAmount" },
+              fees_usd: { $sum: "$feeUsd" },
+              fees_crypto: { $sum: "$feeCrypto" },
+            },
+          },
+          { $sort: { revenue: -1 } },
+        ]),
+        Invoice.aggregate<{
+          totalRevenue: number;
+          totalFeesUsd: number;
+          totalInvoices: number;
+        }>([
+          { $match: matchStage },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: "$amountUsd" },
+              totalFeesUsd: { $sum: "$feeUsd" },
+              totalInvoices: { $sum: 1 },
+            },
+          },
+        ]),
+      ]);
+
+      const summary =
+        totals.length > 0
+          ? totals[0]
+          : { totalRevenue: 0, totalFeesUsd: 0, totalInvoices: 0 };
+
+      return reply.send({
+        object: "tax_report",
+        period: {
+          from: startDate.toISOString(),
+          to: endDate.toISOString(),
+        },
+        merchant_id: merchant.merchantId,
+        merchant_name: merchant.name || "",
+        summary: {
+          total_revenue_usd: parseFloat(summary.totalRevenue.toFixed(2)),
+          total_fees_usd: parseFloat(summary.totalFeesUsd.toFixed(2)),
+          net_revenue_usd: parseFloat(
+            (summary.totalRevenue - summary.totalFeesUsd).toFixed(2),
+          ),
+          total_invoices: summary.totalInvoices,
+        },
+        by_currency: byCurrency.map(
+          (c: {
+            _id: string;
+            revenue: number;
+            count: number;
+            crypto_amount: number;
+            fees_usd: number;
+            fees_crypto: number;
+          }) => ({
+            currency: c._id,
+            revenue_usd: parseFloat(c.revenue.toFixed(2)),
+            crypto_amount: parseFloat(c.crypto_amount.toFixed(8)),
+            fees_usd: parseFloat(c.fees_usd.toFixed(2)),
+            fees_crypto: parseFloat(c.fees_crypto.toFixed(8)),
+            invoice_count: c.count,
+          }),
+        ),
+      });
+    },
+  );
+
+  // ──────────────────────────────────────────────
   // Merchant Suspension Routes
   // ──────────────────────────────────────────────
 
