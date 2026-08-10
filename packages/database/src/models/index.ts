@@ -14,3 +14,6 @@ export * from "./webhook-endpoint.model";
 export * from "./payment-link.model";
 export * from "./donation.model";
 export * from "./affiliate-payout.model";
+export * from "./pos-category.model";
+export * from "./pos-product.model";
+export * from "./pos-register.model";

@@ -11,3 +11,6 @@ export * from "./models/promo-code.model";
 export * from "./models/payment-link.model";
 export * from "./models/donation.model";
 export * from "./models/affiliate-payout.model";
+export * from "./models/pos-category.model";
+export * from "./models/pos-product.model";
+export * from "./models/pos-register.model";

@@ -14,6 +14,7 @@ import {
   BarChart3,
   Puzzle,
   Paintbrush,
+  ShoppingCart,
 } from "lucide-react";
 import {
   HomeIcon,
@@ -63,6 +64,7 @@ const animatedIconsMap: Record<string, React.ElementType> = {
   Team: UserRoundCheckIcon,
   Settings: SettingsIcon,
   "Help & Support": MessageCircleIcon,
+  PoS: CircleDollarSignIcon,
 };
 
 const navGroups = [
@@ -87,6 +89,10 @@ const navGroups = [
         href: "/dashboard/affiliates",
       },
     ],
+  },
+  {
+    label: "Point of Sale",
+    items: [{ icon: ShoppingCart, label: "PoS", href: "/dashboard/pos" }],
   },
   {
     label: "Developer",

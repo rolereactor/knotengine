@@ -24,6 +24,7 @@ import { paymentLinkRoutes } from "./routes/payment-links.js";
 import { donationRoutes } from "./routes/donations.js";
 import { affiliateRoutes } from "./routes/affiliates.js";
 import { whiteLabelRoutes } from "./routes/white-label.js";
+import { posRoutes } from "./routes/pos.js";
 import { healthRoutes } from "./routes/health.js";
 import { PriceOracle } from "./infra/price-feed.js";
 import { ConfirmationEngine } from "./core/confirmation-engine.js";
@@ -384,6 +385,7 @@ server.register(paymentLinkRoutes);
 server.register(donationRoutes);
 server.register(affiliateRoutes);
 server.register(whiteLabelRoutes);
+server.register(posRoutes);
 
 // ──────────────────────────────────────────────
 // OpenAPI Spec — served at /openapi.json
