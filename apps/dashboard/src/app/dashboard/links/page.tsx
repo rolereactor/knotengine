@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import {
   Link2,
   Plus,
@@ -112,11 +113,8 @@ export default function PaymentLinksPage() {
 
   const fetchLinks = async () => {
     try {
-      const res = await fetch("/api/payment-links");
-      if (res.ok) {
-        const data = await res.json();
-        setLinks(data.data || []);
-      }
+      const { data } = await api.get("/payment-links");
+      setLinks(data.data || []);
     } catch {
       console.error("Failed to fetch payment links");
     } finally {
@@ -139,13 +137,9 @@ export default function PaymentLinksPage() {
 
   const deactivateLink = async (linkId: string) => {
     try {
-      const res = await fetch(`/api/payment-links/${linkId}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Payment link deactivated");
-        fetchLinks();
-      }
+      await api.delete(`/payment-links/${linkId}`);
+      toast.success("Payment link deactivated");
+      fetchLinks();
     } catch {
       toast.error("Failed to deactivate link");
     }
@@ -188,18 +182,7 @@ export default function PaymentLinksPage() {
         body.redirect_url = formData.redirectUrl;
       }
 
-      const res = await fetch("/api/payment-links", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || "Failed to create link");
-      }
-
-      await res.json();
+      await api.post("/payment-links", body);
       toast.success("Payment link created");
       setShowCreateModal(false);
       setCreateStep(0);
@@ -218,8 +201,12 @@ export default function PaymentLinksPage() {
         useRedirect: false,
       });
       fetchLinks();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to create link");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error?.message ||
+        err.message ||
+        "Failed to create link";
+      toast.error(message);
     } finally {
       setCreating(false);
     }

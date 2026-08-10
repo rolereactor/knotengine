@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ShoppingCart, Package, Tags, Monitor, ArrowRight } from "lucide-react";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,18 +27,21 @@ export default function PosPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [products, categories, registers] = await Promise.all([
-          fetch("/api/pos/products?limit=1").then((r) => r.json()),
-          fetch("/api/pos/categories").then((r) => r.json()),
-          fetch("/api/pos/registers").then((r) => r.json()),
+        const [productsRes, categoriesRes, registersRes] = await Promise.all([
+          api.get("/pos/products", { params: { limit: 1 } }),
+          api.get("/pos/categories"),
+          api.get("/pos/registers"),
         ]);
 
         setStats({
-          products: products.pagination?.total || products.data?.length || 0,
-          categories: categories.data?.length || 0,
-          registers: registers.data?.length || 0,
+          products:
+            productsRes.data.pagination?.total ||
+            productsRes.data.data?.length ||
+            0,
+          categories: categoriesRes.data.data?.length || 0,
+          registers: registersRes.data.data?.length || 0,
           activeRegisters:
-            registers.data?.filter((r: any) => r.is_active).length || 0,
+            registersRes.data.data?.filter((r: any) => r.is_active).length || 0,
         });
       } catch {
         console.error("Failed to fetch PoS stats");

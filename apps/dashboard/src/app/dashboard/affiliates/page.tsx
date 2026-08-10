@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { api } from "@/lib/api";
 import {
   Card,
   CardContent,
@@ -116,17 +117,14 @@ export default function AffiliatesPage() {
     const fetchData = async () => {
       try {
         const [statsRes, tierRes, payoutsRes] = await Promise.all([
-          fetch("/api/affiliates/stats"),
-          fetch("/api/affiliates/tier"),
-          fetch("/api/affiliates/payouts?limit=5"),
+          api.get("/affiliates/stats"),
+          api.get("/affiliates/tier"),
+          api.get("/affiliates/payouts", { params: { limit: 5 } }),
         ]);
 
-        if (statsRes.ok) setStats(await statsRes.json());
-        if (tierRes.ok) setTierInfo(await tierRes.json());
-        if (payoutsRes.ok) {
-          const data = await payoutsRes.json();
-          setPayouts(data.data || []);
-        }
+        setStats(statsRes.data);
+        setTierInfo(tierRes.data);
+        setPayouts(payoutsRes.data.data || []);
       } catch {
         console.error("Failed to load affiliate data");
       } finally {

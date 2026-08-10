@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { api } from "@/lib/api";
 import {
   Paintbrush,
   Globe,
@@ -69,22 +70,19 @@ export default function WhiteLabelPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await fetch("/api/merchants/me");
-        if (res.ok) {
-          const data = await res.json();
-          setSettings({
-            whiteLabelEnabled: data.white_label_enabled || false,
-            customCss: data.custom_css || "",
-            customDomain: data.custom_domain || null,
-            customDomainVerified: data.custom_domain_verified || false,
-            checkoutLayout: data.checkout_layout || "default",
-            invoiceFooterHtml: data.invoice_footer_html || "",
-            hideNetworkInfo: data.hide_network_info || false,
-            hideQrCode: data.hide_qr_code || false,
-            redirectAfterPayment: data.redirect_after_payment || "",
-            customReceiptMessage: data.custom_receipt_message || "",
-          });
-        }
+        const { data } = await api.get("/merchants/me");
+        setSettings({
+          whiteLabelEnabled: data.white_label_enabled || false,
+          customCss: data.custom_css || "",
+          customDomain: data.custom_domain || null,
+          customDomainVerified: data.custom_domain_verified || false,
+          checkoutLayout: data.checkout_layout || "default",
+          invoiceFooterHtml: data.invoice_footer_html || "",
+          hideNetworkInfo: data.hide_network_info || false,
+          hideQrCode: data.hide_qr_code || false,
+          redirectAfterPayment: data.redirect_after_payment || "",
+          customReceiptMessage: data.custom_receipt_message || "",
+        });
       } catch {
         toast.error("Failed to load settings");
       } finally {
@@ -98,32 +96,25 @@ export default function WhiteLabelPage() {
   const saveSettings = async (updates: Partial<WhiteLabelSettings>) => {
     setSaving(true);
     try {
-      const res = await fetch("/api/merchants/me", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          white_label_enabled: updates.whiteLabelEnabled,
-          custom_css: updates.customCss,
-          checkout_layout: updates.checkoutLayout,
-          invoice_footer_html: updates.invoiceFooterHtml,
-          hide_network_info: updates.hideNetworkInfo,
-          hide_qr_code: updates.hideQrCode,
-          redirect_after_payment: updates.redirectAfterPayment,
-          custom_receipt_message: updates.customReceiptMessage,
-        }),
+      await api.patch("/merchants/me", {
+        white_label_enabled: updates.whiteLabelEnabled,
+        custom_css: updates.customCss,
+        checkout_layout: updates.checkoutLayout,
+        invoice_footer_html: updates.invoiceFooterHtml,
+        hide_network_info: updates.hideNetworkInfo,
+        hide_qr_code: updates.hideQrCode,
+        redirect_after_payment: updates.redirectAfterPayment,
+        custom_receipt_message: updates.customReceiptMessage,
       });
 
-      if (res.ok) {
-        setSettings((prev) => (prev ? { ...prev, ...updates } : null));
-        toast.success("Settings saved");
-      } else {
-        const err = await res.json();
-        throw new Error(err.error?.message || "Failed to save");
-      }
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save settings",
-      );
+      setSettings((prev) => (prev ? { ...prev, ...updates } : null));
+      toast.success("Settings saved");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error?.message ||
+        err.message ||
+        "Failed to save settings";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -131,16 +122,10 @@ export default function WhiteLabelPage() {
 
   const validateCss = async (css: string) => {
     try {
-      const res = await fetch("/api/white-label/preview", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ custom_css: css }),
+      const { data } = await api.post("/white-label/preview", {
+        custom_css: css,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        setCssWarnings(data.warnings || []);
-      }
+      setCssWarnings(data.warnings || []);
     } catch {
       // Silently fail
     }
@@ -151,32 +136,28 @@ export default function WhiteLabelPage() {
 
     setAddingDomain(true);
     try {
-      const res = await fetch("/api/white-label/domains", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain: newDomain.trim() }),
+      const { data } = await api.post("/white-label/domains", {
+        domain: newDomain.trim(),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setSettings((prev) =>
-          prev
-            ? {
-                ...prev,
-                customDomain: data.domain,
-                customDomainVerified: false,
-              }
-            : null,
-        );
-        setShowAddDomain(false);
-        setNewDomain("");
-        toast.success("Domain added. Please verify DNS settings.");
-      } else {
-        const err = await res.json();
-        throw new Error(err.error?.message || "Failed to add domain");
-      }
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Failed to add domain");
+      setSettings((prev) =>
+        prev
+          ? {
+              ...prev,
+              customDomain: data.domain,
+              customDomainVerified: false,
+            }
+          : null,
+      );
+      setShowAddDomain(false);
+      setNewDomain("");
+      toast.success("Domain added. Please verify DNS settings.");
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error?.message ||
+        err.message ||
+        "Failed to add domain";
+      toast.error(message);
     } finally {
       setAddingDomain(false);
     }
@@ -186,19 +167,13 @@ export default function WhiteLabelPage() {
     if (!settings?.customDomain) return;
 
     try {
-      const res = await fetch(
-        `/api/white-label/domains/${settings.customDomain}`,
-        { method: "DELETE" },
+      await api.delete(`/white-label/domains/${settings.customDomain}`);
+      setSettings((prev) =>
+        prev
+          ? { ...prev, customDomain: null, customDomainVerified: false }
+          : null,
       );
-
-      if (res.ok) {
-        setSettings((prev) =>
-          prev
-            ? { ...prev, customDomain: null, customDomainVerified: false }
-            : null,
-        );
-        toast.success("Domain removed");
-      }
+      toast.success("Domain removed");
     } catch {
       toast.error("Failed to remove domain");
     }
@@ -208,30 +183,22 @@ export default function WhiteLabelPage() {
     if (!settings?.customDomain) return;
 
     try {
-      const res = await fetch(
-        `/api/white-label/domains/${settings.customDomain}/verify`,
-        { method: "POST" },
+      await api.post(`/white-label/domains/${settings.customDomain}/verify`);
+      setSettings((prev) =>
+        prev ? { ...prev, customDomainVerified: true } : null,
       );
-
-      if (res.ok) {
-        setSettings((prev) =>
-          prev ? { ...prev, customDomainVerified: true } : null,
-        );
-        toast.success("Domain verified successfully");
-      } else {
-        toast.error("Verification failed. Check DNS settings.");
-      }
+      toast.success("Domain verified successfully");
     } catch {
-      toast.error("Failed to verify domain");
+      toast.error("Verification failed. Check DNS settings.");
     }
   };
 
   const fetchEmbedCode = async () => {
     try {
-      const res = await fetch("/api/white-label/embed?width=400&height=600");
-      if (res.ok) {
-        setEmbedCode(await res.json());
-      }
+      const { data } = await api.get("/white-label/embed", {
+        params: { width: 400, height: 600 },
+      });
+      setEmbedCode(data);
     } catch {
       toast.error("Failed to load embed code");
     }

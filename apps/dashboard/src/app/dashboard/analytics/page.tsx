@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { api } from "@/lib/api";
 import { AnalyticsHeader } from "./components/analytics-header";
 import { MetricsGrid } from "./components/metrics-grid";
 import { VolumeChart } from "./components/volume-chart";
@@ -24,24 +25,11 @@ export default function AnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(
-          `/api/v1/merchants/me/stats?period=${period}`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-            },
-          },
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setStats(data);
-        } else {
-          setError("Failed to load analytics data");
-          setStats(null);
-        }
-      } catch (err) {
-        console.error("Failed to fetch analytics:", err);
+        const { data } = await api.get("/v1/merchants/me/stats", {
+          params: { period },
+        });
+        setStats(data);
+      } catch {
         setError("Failed to load analytics data");
         setStats(null);
       } finally {

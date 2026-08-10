@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { api } from "@/lib/api";
 import {
   Heart,
   Plus,
@@ -128,11 +129,8 @@ export default function DonationsPage() {
 
   const fetchDonations = async () => {
     try {
-      const res = await fetch("/api/donations");
-      if (res.ok) {
-        const data = await res.json();
-        setDonations(data.data || []);
-      }
+      const { data } = await api.get("/donations");
+      setDonations(data.data || []);
     } catch {
       console.error("Failed to fetch donations");
     } finally {
@@ -155,13 +153,9 @@ export default function DonationsPage() {
 
   const deactivateDonation = async (id: string) => {
     try {
-      const res = await fetch(`/api/donations/${id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) {
-        toast.success("Donation page deactivated");
-        fetchDonations();
-      }
+      await api.delete(`/donations/${id}`);
+      toast.success("Donation page deactivated");
+      fetchDonations();
     } catch {
       toast.error("Failed to deactivate donation page");
     }
@@ -233,18 +227,7 @@ export default function DonationsPage() {
         body.leaderboard_size = parseInt(formData.leaderboardSize);
       }
 
-      const res = await fetch("/api/donations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error?.message || "Failed to create donation page");
-      }
-
-      await res.json();
+      await api.post("/donations", body);
       toast.success("Donation page created");
       setShowCreateModal(false);
       setCreateStep(0);
@@ -277,10 +260,12 @@ export default function DonationsPage() {
         leaderboardSize: "10",
       });
       fetchDonations();
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create donation page",
-      );
+    } catch (err: any) {
+      const message =
+        err.response?.data?.error?.message ||
+        err.message ||
+        "Failed to create donation page";
+      toast.error(message);
     } finally {
       setCreating(false);
     }
