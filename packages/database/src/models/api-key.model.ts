@@ -9,6 +9,8 @@ export type ApiKeyScope = "full_access" | "read_only" | "invoices" | "webhooks";
 
 export interface IApiKey extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Optional store scope — when set, the key only accesses this store's resources */
+  storeId?: mongoose.Types.ObjectId;
   /** Public-facing key ID e.g. 'key_abc123' */
   keyId: string;
   /** Hashed version of the actual secret key */
@@ -43,6 +45,12 @@ const ApiKeySchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Merchant",
       required: true,
+      index: true,
+    },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
+      default: null,
       index: true,
     },
     keyId: { type: String, unique: true },

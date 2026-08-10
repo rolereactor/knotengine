@@ -7,6 +7,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IWebhookEndpoint extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Store this endpoint belongs to */
+  storeId?: mongoose.Types.ObjectId;
   /** Unique endpoint ID e.g. 'we_abc123' */
   endpointId: string;
   /** Destination URL */
@@ -42,6 +44,10 @@ const WebhookEndpointSchema: Schema = new Schema(
       ref: "Merchant",
       required: true,
       index: true,
+    },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
     },
     endpointId: { type: String, unique: true },
     url: { type: String, required: true },

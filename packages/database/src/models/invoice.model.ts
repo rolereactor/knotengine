@@ -24,6 +24,8 @@ export interface ILineItem {
 
 export interface IInvoice extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Store this invoice belongs to */
+  storeId?: mongoose.Types.ObjectId;
   /** Human-readable invoice identifier (e.g. inv_abc123) */
   invoiceId: string;
   amountUsd: number;
@@ -84,6 +86,10 @@ const InvoiceSchema: Schema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "Merchant",
       required: true,
+    },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
     },
     invoiceId: { type: String, required: true, unique: true },
     amountUsd: { type: Number, required: true },
@@ -149,6 +155,7 @@ const InvoiceSchema: Schema = new Schema(
 );
 
 InvoiceSchema.index({ merchantId: 1, status: 1 });
+InvoiceSchema.index({ merchantId: 1, storeId: 1, createdAt: -1 });
 InvoiceSchema.index({ invoiceId: 1, status: 1 });
 InvoiceSchema.index({ merchantId: 1, "metadata.isTestnet": 1, createdAt: -1 });
 InvoiceSchema.index({ payAddress: 1, status: 1 });

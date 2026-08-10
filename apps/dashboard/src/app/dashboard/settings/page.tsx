@@ -12,6 +12,7 @@ import { IpAllowlistCard } from "./components/ip-allowlist-card";
 import { TwoFASetupDialog } from "./components/two-fa-setup-dialog";
 import { TwoFADisableDialog } from "./components/two-fa-disable-dialog";
 import { DangerZoneCard } from "./components/danger-zone-card";
+import { StoreSelector } from "./components/store-selector";
 import { SuccessToast } from "./components/success-toast";
 import { SubNavLayout } from "@/components/sub-nav-layout";
 import { Store, ShieldCheck, Sliders, Globe, Trash2, Zap } from "lucide-react";
@@ -76,6 +77,7 @@ export default function SettingsPage() {
               saving={saving}
               currentPlan={formData.plan}
             />
+            <StoreSelector />
             <AppearanceCard
               formData={formData}
               onSave={handleSave}

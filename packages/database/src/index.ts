@@ -5,6 +5,7 @@ export { MerchantMember } from "./models/merchant-member.model";
 export { ApiKey } from "./models/api-key.model";
 export { WebhookEndpoint } from "./models/webhook-endpoint.model";
 export { Refund } from "./models/refund.model";
+export { Store } from "./models/store.model";
 export { mongoose };
 export {
   runMigrations,

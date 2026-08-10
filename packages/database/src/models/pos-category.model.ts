@@ -7,6 +7,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IPosCategory extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Store this category belongs to */
+  storeId?: mongoose.Types.ObjectId;
   /** Human-readable category identifier (e.g. cat_abc123) */
   categoryId: string;
   /** Display name */
@@ -28,6 +30,10 @@ const PosCategorySchema: Schema = new Schema(
       ref: "Merchant",
       required: true,
     },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
+    },
     categoryId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     description: { type: String },
@@ -38,6 +44,7 @@ const PosCategorySchema: Schema = new Schema(
 );
 
 PosCategorySchema.index({ merchantId: 1, isActive: 1 });
+PosCategorySchema.index({ merchantId: 1, storeId: 1, isActive: 1 });
 PosCategorySchema.index({ merchantId: 1, sortOrder: 1 });
 
 export const PosCategory = mongoose.model<IPosCategory>(

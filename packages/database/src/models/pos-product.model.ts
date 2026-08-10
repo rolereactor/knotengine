@@ -7,6 +7,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IPosProduct extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Store this product belongs to */
+  storeId?: mongoose.Types.ObjectId;
   /** Human-readable product identifier (e.g. prod_abc123) */
   productId: string;
   /** Display name */
@@ -36,6 +38,10 @@ const PosProductSchema: Schema = new Schema(
       ref: "Merchant",
       required: true,
     },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
+    },
     productId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     description: { type: String },
@@ -53,6 +59,7 @@ const PosProductSchema: Schema = new Schema(
 );
 
 PosProductSchema.index({ merchantId: 1, isActive: 1 });
+PosProductSchema.index({ merchantId: 1, storeId: 1, isActive: 1 });
 PosProductSchema.index({ merchantId: 1, categoryId: 1 });
 PosProductSchema.index({ merchantId: 1, sortOrder: 1 });
 

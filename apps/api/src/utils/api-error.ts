@@ -32,6 +32,8 @@ export type ErrorCode =
   | "merchant_deleted"
   // API Keys
   | "api_key_not_found"
+  // Stores
+  | "store_not_found"
   // Webhook Endpoints
   | "webhook_endpoint_not_found"
   | "no_successful_delivery"

@@ -12,6 +12,7 @@ import {
   validatorCompiler,
 } from "fastify-type-provider-zod";
 import { merchantRoutes } from "./routes/merchants.js";
+import { storeRoutes } from "./routes/store.js";
 import { apiError } from "./utils/api-error.js";
 import { invoiceRoutes } from "./routes/invoices.js";
 import { webhookRoutes } from "./routes/webhooks.js";
@@ -375,6 +376,7 @@ SocketService.init(server.server);
 // ──────────────────────────────────────────────
 server.register(healthRoutes);
 server.register(merchantRoutes);
+server.register(storeRoutes);
 server.register(invoiceRoutes);
 server.register(webhookRoutes);
 server.register(twoFactorRoutes);

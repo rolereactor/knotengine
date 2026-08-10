@@ -7,6 +7,8 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IPosRegister extends Document {
   merchantId: mongoose.Types.ObjectId;
+  /** Store this register belongs to */
+  storeId?: mongoose.Types.ObjectId;
   /** Human-readable register identifier (e.g. reg_abc123) */
   registerId: string;
   /** Display name for this register */
@@ -32,6 +34,10 @@ const PosRegisterSchema: Schema = new Schema(
       ref: "Merchant",
       required: true,
     },
+    storeId: {
+      type: Schema.Types.ObjectId,
+      ref: "Store",
+    },
     registerId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
     location: { type: String },
@@ -44,6 +50,7 @@ const PosRegisterSchema: Schema = new Schema(
 );
 
 PosRegisterSchema.index({ merchantId: 1, isActive: 1 });
+PosRegisterSchema.index({ merchantId: 1, storeId: 1, isActive: 1 });
 
 export const PosRegister = mongoose.model<IPosRegister>(
   "PosRegister",

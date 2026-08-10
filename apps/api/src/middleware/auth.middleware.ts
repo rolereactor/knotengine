@@ -20,6 +20,8 @@ export async function invalidateMerchantCache(
 declare module "fastify" {
   interface FastifyRequest {
     apiKey?: any;
+    /** When an API key is scoped to a store, this is set */
+    storeId?: string;
   }
 }
 
@@ -69,6 +71,11 @@ export const requireAuth = async (
         );
       }
       request.merchant = merchant;
+      // Scope by storeId if the API key is store-scoped
+      const storeRef = (foundKey as any).storeId;
+      if (storeRef) {
+        request.storeId = storeRef.toString();
+      }
       return;
     }
 
