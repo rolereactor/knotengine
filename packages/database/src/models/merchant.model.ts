@@ -277,7 +277,7 @@ const MerchantSchema: Schema = new Schema(
     deletedAt: { type: Date },
     deletedBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 // apiKeyHash index is auto-created by unique: true

@@ -33,6 +33,7 @@ const WebhookDeliverySchema = new Schema<IWebhookDelivery>(
     duration: { type: Number, required: true },
   },
   {
+    strict: true,
     timestamps: true,
   },
 );

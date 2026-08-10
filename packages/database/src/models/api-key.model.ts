@@ -71,7 +71,7 @@ const ApiKeySchema: Schema = new Schema(
     expiresAt: { type: Date },
     createdBy: { type: Schema.Types.ObjectId, ref: "User" },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 export const ApiKey = mongoose.model<IApiKey>("ApiKey", ApiKeySchema);

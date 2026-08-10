@@ -55,7 +55,7 @@ const PaymentLinkSchema: Schema = new Schema(
     expiresAt: { type: Date },
     redirectUrl: { type: String },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 PaymentLinkSchema.index({ merchantId: 1, isActive: 1 });

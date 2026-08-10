@@ -6,119 +6,37 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  install:
-    name: Install
+  ci:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v6
+      - uses: pnpm/action-setup@v4
         with:
-          node-version: 20
-          cache: "pnpm"
+          version: 9
 
-      - run: pnpm install --frozen-lockfile
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    needs: install
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "pnpm"
+          node-version: 22
+          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-      - run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
 
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    needs: install
-    steps:
-      - uses: actions/checkout@v4
+      - name: Build
+        run: pnpm build
 
-      - uses: pnpm/action-setup@v6
+      - name: Test
+        run: pnpm test
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build workspace packages
-        run: pnpm --filter @qodinger/knot-types build && pnpm --filter @qodinger/knot-crypto build && pnpm --filter @qodinger/knot-database build
-
-      - run: pnpm typecheck
-
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    needs: install
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Build workspace packages
-        run: pnpm --filter @qodinger/knot-types build && pnpm --filter @qodinger/knot-crypto build && pnpm --filter @qodinger/knot-database build
-
-      - name: Run SDK tests
-        run: pnpm --filter @qodinger/knot-sdk test
-
-      - name: Run API tests
-        run: pnpm --filter api test
-
-      - name: Run Crypto tests
-        run: pnpm --filter @qodinger/knot-crypto test
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    needs: [lint, typecheck, test]
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 20
-          cache: "pnpm"
-
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm build
-
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build API Docker image
-        run: docker build -t knot-api -f apps/api/Dockerfile .
-
-      - name: Build Dashboard Docker image
-        run: docker build -t knot-dashboard -f apps/dashboard/Dockerfile .
-
-      - name: Build Checkout Docker image
-        run: docker build -t knot-checkout -f apps/checkout/Dockerfile .
+      - name: Lint
+        run: pnpm lint

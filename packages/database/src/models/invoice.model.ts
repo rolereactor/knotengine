@@ -151,7 +151,7 @@ const InvoiceSchema: Schema = new Schema(
     description: { type: String },
     paidAt: { type: Date },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 InvoiceSchema.index({ merchantId: 1, status: 1 });

@@ -45,7 +45,7 @@ const WebhookEventSchema: Schema = new Schema(
     invoiceId: { type: Schema.Types.ObjectId, ref: "Invoice" },
     rawPayload: { type: Schema.Types.Mixed, required: true },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 WebhookEventSchema.index({ toAddress: 1 });

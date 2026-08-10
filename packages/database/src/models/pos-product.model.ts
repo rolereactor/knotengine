@@ -55,7 +55,7 @@ const PosProductSchema: Schema = new Schema(
     sku: { type: String },
     sortOrder: { type: Number, default: 0 },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 PosProductSchema.index({ merchantId: 1, isActive: 1 });

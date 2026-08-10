@@ -36,7 +36,7 @@ const NotificationSchema: Schema = new Schema(
     link: { type: String },
     meta: { type: Schema.Types.Mixed },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 NotificationSchema.index({ merchantId: 1, isRead: 1 });

@@ -44,7 +44,7 @@ const AffiliatePayoutSchema: Schema = new Schema(
     failureReason: { type: String },
     processedAt: { type: Date },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 AffiliatePayoutSchema.index({ userId: 1, status: 1 });

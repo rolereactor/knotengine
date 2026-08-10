@@ -9,6 +9,7 @@ import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { Donation, DonationMessage } from "@qodinger/knot-database";
 import { requireAuth } from "../middleware/auth.middleware.js";
+import { merchantRateLimit } from "../middleware/rate-limit.middleware.js";
 import { apiError } from "../utils/api-error.js";
 import { RedisClient } from "../infra/redis-client.js";
 import * as crypto from "crypto";
@@ -41,7 +42,7 @@ export async function donationRoutes(app: FastifyInstance) {
   server.post(
     "/v1/donations",
     {
-      preHandler: requireAuth,
+      preHandler: [requireAuth, merchantRateLimit],
       schema: {
         body: z.object({
           title: z.string().min(1).max(100),

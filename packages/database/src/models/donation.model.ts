@@ -118,7 +118,7 @@ const DonationSchema: Schema = new Schema(
     leaderboardEnabled: { type: Boolean, default: true },
     leaderboardSize: { type: Number, default: 10 },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 DonationSchema.index({ slug: 1, isActive: 1 });
@@ -138,7 +138,7 @@ const DonationMessageSchema: Schema = new Schema(
     read: { type: Boolean, default: false },
     showOnLeaderboard: { type: Boolean, default: true },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 DonationMessageSchema.index({ donationId: 1, createdAt: -1 });

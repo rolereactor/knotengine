@@ -62,7 +62,7 @@ const RefundSchema: Schema = new Schema(
     failureReason: { type: String },
     processedAt: { type: Date },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 RefundSchema.index({ invoiceId: 1, status: 1 });

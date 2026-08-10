@@ -66,7 +66,7 @@ const WebhookEndpointSchema: Schema = new Schema(
     disabledAt: { type: Date },
     apiVersion: { type: String, default: "v1" },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 export const WebhookEndpoint = mongoose.model<IWebhookEndpoint>(

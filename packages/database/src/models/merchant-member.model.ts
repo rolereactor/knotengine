@@ -75,7 +75,7 @@ const MerchantMemberSchema: Schema = new Schema(
     acceptedAt: { type: Date },
     roleHistory: { type: [RoleHistorySchema], default: [] },
   },
-  { timestamps: true, versionKey: "__v" },
+  { strict: true, timestamps: true, versionKey: "__v" },
 );
 
 // Indexes

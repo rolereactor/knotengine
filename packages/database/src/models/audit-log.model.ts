@@ -43,7 +43,7 @@ const AuditLogSchema: Schema = new Schema(
     userAgent: { type: String },
     metadata: { type: Schema.Types.Mixed },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 // Indexes for efficient querying

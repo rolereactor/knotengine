@@ -40,7 +40,7 @@ const PosCategorySchema: Schema = new Schema(
     sortOrder: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 PosCategorySchema.index({ merchantId: 1, isActive: 1 });

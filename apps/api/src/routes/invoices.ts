@@ -9,6 +9,7 @@ import { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { InvoicesController } from "../controllers/invoices.controller.js";
 import { requireAuth } from "../middleware/auth.middleware.js";
+import { merchantRateLimit } from "../middleware/rate-limit.middleware.js";
 import rateLimit from "@fastify/rate-limit";
 
 const sanitizeDescription = (val?: string) =>
@@ -60,7 +61,7 @@ export async function invoiceRoutes(app: FastifyInstance) {
   server.post(
     "/v1/invoices",
     {
-      preHandler: requireAuth,
+      preHandler: [requireAuth, merchantRateLimit],
       schema: {
         headers: z
           .object({

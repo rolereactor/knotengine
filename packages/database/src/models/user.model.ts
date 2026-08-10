@@ -72,7 +72,7 @@ const UserSchema: Schema = new Schema(
     defaultMerchantId: { type: String },
     lastActiveMerchantId: { type: String },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 export const User = mongoose.model<IUser>("User", UserSchema);

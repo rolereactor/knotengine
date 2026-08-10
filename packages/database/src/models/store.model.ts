@@ -53,7 +53,7 @@ const StoreSchema: Schema = new Schema(
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 StoreSchema.index({ merchantId: 1, isActive: 1, isDeleted: 1 });

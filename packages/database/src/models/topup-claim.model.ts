@@ -33,7 +33,7 @@ const TopUpClaimSchema: Schema = new Schema(
       default: "pending",
     },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 export const TopUpClaim = mongoose.model<ITopUpClaim>(

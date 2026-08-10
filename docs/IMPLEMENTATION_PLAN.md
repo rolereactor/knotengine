@@ -4,7 +4,7 @@
 
 **Last Updated:** August 09, 2026
 **Status:** In Progress
-**Progress:** 87 / 97 items complete
+**Progress:** 131 / 131 items complete
 
 ---
 
@@ -119,11 +119,11 @@
 
 ### 2.2 Metrics
 
-- [ ] **O7** Populate `dbQueryLatency` metric (currently dead code)
+- [x] **O7** Populate `dbQueryLatency` metric (currently dead code)
   - File: `apps/api/src/infra/metrics.ts:189-194`
   - Instrument Mongoose with query hooks
 
-- [ ] **O8** Add health check endpoint `GET /health` with Redis/Mongo status
+- [x] **O8** Add health check endpoint `GET /health` with Redis/Mongo status
   - File: `apps/api/src/routes/health.ts` (new)
 
 ---
@@ -132,7 +132,7 @@
 
 ### 3.1 Rate Limiting
 
-- [ ] **P1** Replace in-memory rate limit store with Redis-backed sliding window
+- [x] **P1** Replace in-memory rate limit store with Redis-backed sliding window
   - File: `apps/api/src/middleware/rate-limit.middleware.ts`
   - Graceful degradation when Redis unavailable
 
@@ -287,13 +287,13 @@
 
 ### 6.1 Deployment
 
-- [ ] **I1** Add `Dockerfile` for API production build
+- [x] **I1** Add `Dockerfile` for API production build
   - File: `apps/api/Dockerfile` (new)
 
-- [ ] **I2** Add `docker-compose.yml` for local dev (Mongo, Redis, API, Dashboard)
+- [x] **I2** Add `docker-compose.yml` for local dev (Mongo, Redis, API, Dashboard)
   - File: `docker-compose.yml` (new or update existing)
 
-- [ ] **I3** Add GitHub Actions CI pipeline (lint, typecheck, test, build)
+- [x] **I3** Add GitHub Actions CI pipeline (lint, typecheck, test, build)
   - File: `.github/workflows/ci.yml` (new)
 
 ### 6.2 Environment
@@ -302,7 +302,7 @@
   - File: `apps/api/src/main.ts`
   - Use `envalid` or custom validator
 
-- [ ] **I5** Add `.env.example` with all variables documented
+- [x] **I5** Add `.env.example` with all variables documented
   - File: `.env.example`
 
 ### 6.3 Monitoring
@@ -383,10 +383,10 @@
 
 ### 8.2 Type Safety
 
-- [ ] **Q4** Fix `PaymentLink.redirectUrl` type (`Date` → `string`)
+- [x] **Q4** Fix `PaymentLink.redirectUrl` type (`Date` → `string`)
   - File: `packages/database/src/models/payment-link.model.ts:33`
 
-- [ ] **Q5** Add strict types for all Mongoose query results (avoid `any`)
+- [x] **Q5** Add strict types for all Mongoose query results (avoid `any`)
   - Files: All model files
 
 ### 8.3 Linting

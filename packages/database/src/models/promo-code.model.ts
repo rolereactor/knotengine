@@ -30,7 +30,7 @@ const PromoCodeSchema: Schema = new Schema(
     expiresAt: { type: Date },
     isActive: { type: Boolean, default: true },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 // Auto-expire codes if expiresAt is set

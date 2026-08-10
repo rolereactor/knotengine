@@ -46,7 +46,7 @@ const PosRegisterSchema: Schema = new Schema(
     totalTransactions: { type: Number, default: 0 },
     totalVolumeUsd: { type: Number, default: 0 },
   },
-  { timestamps: true },
+  { strict: true, timestamps: true },
 );
 
 PosRegisterSchema.index({ merchantId: 1, isActive: 1 });
