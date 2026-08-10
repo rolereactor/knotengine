@@ -1,5 +1,6 @@
 import { Invoice, Merchant, User } from "@qodinger/knot-database";
 import { childLogger } from "../infra/logger.js";
+import { escapeCsvField } from "../utils/csv.js";
 
 /**
  * 📊 Scheduled Export Processor
@@ -82,12 +83,7 @@ export async function processScheduledExport(
       headers.join(","),
       ...rows.map((row) =>
         headers
-          .map((h) => {
-            const val = String(row[h as keyof typeof row] ?? "");
-            return val.includes(",") || val.includes('"') || val.includes("\n")
-              ? `"${val.replace(/"/g, '""')}"`
-              : val;
-          })
+          .map((h) => escapeCsvField(String(row[h as keyof typeof row] ?? "")))
           .join(","),
       ),
     ];

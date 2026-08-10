@@ -17,6 +17,12 @@ import { apiError } from "../utils/api-error.js";
 import { RedisClient } from "../infra/redis-client.js";
 import { createLightningProvider } from "../infra/lightning-provider.js";
 import { childLogger } from "../infra/logger.js";
+import { escapeCsvField } from "../utils/csv.js";
+import {
+  parseDateRange,
+  buildDateFilter,
+  DateRangeError,
+} from "../utils/date-range.js";
 
 export const InvoicesController = {
   createInvoice: async (request: any, reply: FastifyReply) => {
@@ -663,44 +669,15 @@ export const InvoicesController = {
       filter.status = status;
     }
     if (from || to) {
-      const dateFilter: Record<string, Date> = {};
-      if (from) {
-        const startDate = new Date(from);
-        if (isNaN(startDate.getTime())) {
-          return apiError(
-            reply,
-            400,
-            "invalid_request",
-            "Invalid 'from' date format. Use ISO 8601 datetime strings.",
-          );
+      try {
+        const { startDate, endDate } = parseDateRange({ from, to });
+        Object.assign(filter, buildDateFilter(startDate, endDate));
+      } catch (err) {
+        if (err instanceof DateRangeError) {
+          return apiError(reply, 400, "invalid_request", err.message);
         }
-        dateFilter.$gte = startDate;
+        throw err;
       }
-      if (to) {
-        const endDate = new Date(to);
-        if (isNaN(endDate.getTime())) {
-          return apiError(
-            reply,
-            400,
-            "invalid_request",
-            "Invalid 'to' date format. Use ISO 8601 datetime strings.",
-          );
-        }
-        dateFilter.$lte = endDate;
-      }
-      if (
-        dateFilter.$gte &&
-        dateFilter.$lte &&
-        dateFilter.$gte > dateFilter.$lte
-      ) {
-        return apiError(
-          reply,
-          400,
-          "invalid_request",
-          "The 'from' date must be before or equal to the 'to' date.",
-        );
-      }
-      filter.createdAt = dateFilter;
     }
     if (only_testnet === "true") {
       // Exclusively testnet invoices
@@ -920,14 +897,9 @@ export const InvoicesController = {
         headers.join(","),
         ...rows.map((row) =>
           headers
-            .map((h) => {
-              const val = String(row[h as keyof typeof row] ?? "");
-              return val.includes(",") ||
-                val.includes('"') ||
-                val.includes("\n")
-                ? `"${val.replace(/"/g, '""')}"`
-                : val;
-            })
+            .map((h) =>
+              escapeCsvField(String(row[h as keyof typeof row] ?? "")),
+            )
             .join(","),
         ),
       ];
