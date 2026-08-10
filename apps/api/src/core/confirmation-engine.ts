@@ -157,7 +157,7 @@ export class ConfirmationEngine {
           },
         });
 
-        const { status: newStatus } = this.resolveStatus(
+        const { status: newStatus, amountStatus } = this.resolveStatus(
           invoice,
           totalCryptoReceived,
           event.confirmations,
@@ -186,7 +186,6 @@ export class ConfirmationEngine {
         }
 
         const isTestnet = invoice.metadata?.isTestnet === true;
-        const isNewTransaction = true;
         const statusChanged = invoice.status !== newStatus;
 
         SocketService.emitStatusUpdate(invoice.invoiceId, newStatus, {
@@ -196,7 +195,7 @@ export class ConfirmationEngine {
           cryptoAmountReceived: totalCryptoReceived,
         });
 
-        if (isNewTransaction || statusChanged) {
+        if (statusChanged) {
           if (isTerminalSuccess) {
             WebhookDispatcher.dispatch(invoice.invoiceId, "invoice.confirmed");
             return { matched: true, invoiceId: invoice.invoiceId, newStatus };

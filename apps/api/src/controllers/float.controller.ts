@@ -1,6 +1,7 @@
 import { FastifyReply } from "fastify";
 import { FloatManager } from "../core/float-manager.js";
 import { apiError } from "../utils/api-error.js";
+import { childLogger } from "../infra/logger.js";
 
 export const FloatController = {
   getStats: async (request: any, reply: FastifyReply) => {
@@ -22,7 +23,7 @@ export const FloatController = {
       const stats = await FloatManager.getInstance().getFloatStats();
       return reply.send(stats);
     } catch (error) {
-      console.error("Float stats error:", error);
+      childLogger("float").error({ err: error }, "Float stats error:");
       return apiError(
         reply,
         500,
@@ -51,7 +52,7 @@ export const FloatController = {
       const result = await FloatManager.getInstance().investFloat();
       return reply.send(result);
     } catch (error) {
-      console.error("Float investment error:", error);
+      childLogger("float").error({ err: error }, "Float investment error:");
       return apiError(reply, 500, "internal_error", "Failed to invest float.");
     }
   },
@@ -75,7 +76,7 @@ export const FloatController = {
       const health = await FloatManager.getInstance().getHealthMetrics();
       return reply.send(health);
     } catch (error) {
-      console.error("Float health error:", error);
+      childLogger("float").error({ err: error }, "Float health error:");
       return apiError(
         reply,
         500,
@@ -104,7 +105,7 @@ export const FloatController = {
       const result = await FloatManager.getInstance().emergencyWithdraw();
       return reply.send(result);
     } catch (error) {
-      console.error("Emergency withdrawal error:", error);
+      childLogger("float").error({ err: error }, "Emergency withdrawal error:");
       return apiError(
         reply,
         500,

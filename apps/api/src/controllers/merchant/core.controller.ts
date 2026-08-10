@@ -16,6 +16,7 @@ import { AuditLogger } from "../../core/audit-logger.js";
 import { safeCompare } from "../../utils/crypto.js";
 import { apiError } from "../../utils/api-error.js";
 import { invalidateMerchantCache } from "../../middleware/auth.middleware.js";
+import { childLogger } from "../../infra/logger.js";
 
 const bip32 = BIP32Factory(ecc);
 
@@ -121,7 +122,7 @@ export const MerchantCoreController = {
           referralCode: await generateReferralCode(),
           referredBy: referrerId,
         });
-        console.info(
+        childLogger("merchant").info(
           `👤 New User Identity created: ${oauthId} (+$${startingCredit} credit${isAffiliateSignup ? ` [affiliate bonus included]` : ""})`,
         );
       }
@@ -169,7 +170,7 @@ export const MerchantCoreController = {
       });
     }
 
-    console.info(`Merchant created: ${newMerchant.id}`);
+    childLogger("merchant").info(`Merchant created: ${newMerchant.id}`);
 
     // Audit log merchant creation
     if (userId) {
@@ -278,7 +279,7 @@ export const MerchantCoreController = {
           { new: true },
         );
         if (updatedMerchant) merchant = updatedMerchant;
-        console.info(
+        childLogger("merchant").info(
           `🆔 Auto-assigned public ID for merchant: ${merchant._id} -> ${mid}`,
         );
       }
@@ -457,7 +458,9 @@ export const MerchantCoreController = {
       },
     );
 
-    console.info(`[Settings] Soft-deleted merchant: '${merchant._id}'`);
+    childLogger("merchant").info(
+      `[Settings] Soft-deleted merchant: '${merchant._id}'`,
+    );
 
     return {
       success: true,
@@ -486,11 +489,14 @@ export const MerchantCoreController = {
       );
     }
 
-    console.log(
-      "📥 PATCH /v1/merchants/me - Received updates:",
-      JSON.stringify(updates, null, 2),
+    childLogger("merchant").debug(
+      { updates: JSON.stringify(updates, null, 2) },
+      "📥 PATCH /v1/merchants/me - Received updates",
     );
-    console.log("📍 brandingAlignment in updates:", updates.brandingAlignment);
+    childLogger("merchant").debug(
+      "📍 brandingAlignment in updates:",
+      updates.brandingAlignment,
+    );
 
     // Use updateOne instead of findByIdAndUpdate to avoid mongoose schema validation
     const updateResult = await Merchant.collection.updateOne(
@@ -498,7 +504,10 @@ export const MerchantCoreController = {
       { $set: updates },
     );
 
-    console.log("✅ MongoDB update result:", updateResult);
+    childLogger("merchant").debug(
+      { result: updateResult },
+      "✅ MongoDB update result",
+    );
 
     // Invalidate cached merchant data so auth middleware picks up fresh settings
     invalidateMerchantCache(merchant._id.toString()).catch(() => {});
@@ -521,21 +530,17 @@ export const MerchantCoreController = {
       (updated as any).brandingAlignment = updates.brandingAlignment;
     }
 
-    console.log(
-      "✅ Merchant updated - brandingAlignment from DB:",
-      (updated as any).brandingAlignment,
+    childLogger("merchant").debug(
+      { brandingAlignment: (updated as any).brandingAlignment },
+      "✅ Merchant updated - brandingAlignment from DB",
     );
-    console.log(
-      "✅ Full updated merchant object:",
-      JSON.stringify(
-        {
-          brandingAlignment: (updated as any).brandingAlignment,
-          theme: updated.theme,
-          brandColor: updated.brandColor,
-        },
-        null,
-        2,
-      ),
+    childLogger("merchant").debug(
+      {
+        brandingAlignment: (updated as any).brandingAlignment,
+        theme: updated.theme,
+        brandColor: updated.brandColor,
+      },
+      "✅ Full updated merchant object",
     );
 
     // Audit log profile update

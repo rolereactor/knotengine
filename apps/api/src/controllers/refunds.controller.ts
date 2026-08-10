@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import { Invoice, Refund } from "@qodinger/knot-database";
 import { apiError } from "../utils/api-error.js";
 import { RedisClient } from "../infra/redis-client.js";
+import { childLogger } from "../infra/logger.js";
 
 export const RefundsController = {
   createRefund: async (request: any, reply: FastifyReply) => {
@@ -116,7 +117,7 @@ export const RefundsController = {
         // Non-critical: webhook dispatch failure should not block refund creation
       }
 
-      console.info(
+      childLogger("refunds").info(
         `💸 Refund created: ${refundId} for invoice ${invoice_id} ($${amount_usd})`,
       );
 
@@ -141,7 +142,7 @@ export const RefundsController = {
       return reply.code(201).send(responseBody);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`Refund creation error: ${message}`);
+      childLogger("refunds").error(`Refund creation error: ${message}`);
       return apiError(
         reply,
         500,
@@ -300,7 +301,7 @@ export const RefundsController = {
       $set: { status: "failed", failureReason: "Cancelled by merchant" },
     });
 
-    console.info(`🚫 Refund cancelled: ${id}`);
+    childLogger("refunds").info(`🚫 Refund cancelled: ${id}`);
 
     return {
       object: "refund",

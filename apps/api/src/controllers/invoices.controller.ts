@@ -16,6 +16,7 @@ import { CryptoMath } from "../core/crypto-math.js";
 import { apiError } from "../utils/api-error.js";
 import { RedisClient } from "../infra/redis-client.js";
 import { createLightningProvider } from "../infra/lightning-provider.js";
+import { childLogger } from "../infra/logger.js";
 
 export const InvoicesController = {
   createInvoice: async (request: any, reply: FastifyReply) => {
@@ -293,7 +294,7 @@ export const InvoicesController = {
         }
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
-        console.error(`Address derivation error: ${message}`);
+        childLogger("invoices").error(`Address derivation error: ${message}`);
         return apiError(
           reply,
           400,
@@ -361,7 +362,9 @@ export const InvoicesController = {
           lightningPaymentHash = lightningInvoice.paymentHash;
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : String(err);
-          console.error(`Lightning invoice creation error: ${message}`);
+          childLogger("invoices").error(
+            `Lightning invoice creation error: ${message}`,
+          );
           return apiError(
             reply,
             500,
@@ -449,7 +452,7 @@ export const InvoicesController = {
         });
       }
 
-      console.info(
+      childLogger("invoices").info(
         `[Invoice] Created ${invoiceId} for ${merchant.name} (Address: ${payAddress})`,
       );
 
@@ -491,7 +494,7 @@ export const InvoicesController = {
       return reply.code(201).send(responseBody);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`Invoice creation error: ${message}`);
+      childLogger("invoices").error(`Invoice creation error: ${message}`);
       stopTimer();
       return apiError(
         reply,
@@ -798,7 +801,7 @@ export const InvoicesController = {
       $set: { status: "expired" },
     });
 
-    console.info(`🚫 Invoice cancelled: ${id}`);
+    childLogger("invoices").info(`🚫 Invoice cancelled: ${id}`);
 
     return {
       object: "invoice",
@@ -987,7 +990,7 @@ export const InvoicesController = {
       { $set: { status: "expired" } },
     );
 
-    console.info(
+    childLogger("invoices").info(
       `Bulk cancel: ${result.modifiedCount}/${invoice_ids.length} invoices expired for merchant ${merchant._id}`,
     );
 
@@ -1096,7 +1099,7 @@ export const InvoicesController = {
       },
     });
 
-    console.info(`✅ Invoice manually resolved: ${id}`);
+    childLogger("invoices").info(`✅ Invoice manually resolved: ${id}`);
 
     return {
       object: "invoice",

@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { User } from "@qodinger/knot-database";
 import { NotificationService } from "../infra/notification-service.js";
+import { childLogger } from "../infra/logger.js";
 
 /**
  * 🏦 "The Float" Yield Manager
@@ -56,7 +57,9 @@ export class FloatManager {
     error?: string;
   }> {
     try {
-      console.log("🏦 Starting float investment process...");
+      childLogger("float-manager").info(
+        "🏦 Starting float investment process...",
+      );
 
       // Idempotency: Check if already invested today
       const today = new Date();
@@ -65,20 +68,26 @@ export class FloatManager {
         lastFloatInvestAt: { $gte: today },
       });
       if (alreadyRan) {
-        console.log("🏦 Float investment already ran today, skipping.");
+        childLogger("float-manager").info(
+          "🏦 Float investment already ran today, skipping.",
+        );
         return { invested: 0, success: true, error: "Already ran today" };
       }
 
       const totalBalance = await this.getTotalAvailableBalance();
 
       if (totalBalance < 100) {
-        console.log(`💸 Insufficient balance for investment: $${totalBalance}`);
+        childLogger("float-manager").info(
+          `💸 Insufficient balance for investment: $${totalBalance}`,
+        );
         return { invested: 0, success: false, error: "Insufficient balance" };
       }
 
       const invested = await this.trackInvestment(totalBalance);
 
-      console.log(`💰 Invested $${invested} from float into yield protocols`);
+      childLogger("float-manager").info(
+        `💰 Invested $${invested} from float into yield protocols`,
+      );
 
       await this.notifyMerchants({
         title: "Float Investment Complete",
@@ -88,7 +97,10 @@ export class FloatManager {
 
       return { invested, success: true };
     } catch (error) {
-      console.error("❌ Float investment failed:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Float investment failed",
+      );
       return {
         invested: 0,
         success: false,
@@ -121,7 +133,10 @@ export class FloatManager {
         ),
       );
     } catch (error) {
-      console.error("❌ Failed to notify merchants:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Failed to notify merchants",
+      );
     }
   }
 
@@ -141,7 +156,10 @@ export class FloatManager {
 
       return result[0]?.totalBalance || 0;
     } catch (error) {
-      console.error("❌ Failed to get total balance:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Failed to get total balance",
+      );
       return 0;
     }
   }
@@ -191,7 +209,10 @@ export class FloatManager {
         yieldAPY: yieldAPY * 100,
       };
     } catch (error) {
-      console.error("❌ Failed to get float stats:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Failed to get float stats",
+      );
       return {
         totalBalance: 0,
         investedAmount: 0,
@@ -211,7 +232,7 @@ export class FloatManager {
     success: boolean;
   }> {
     try {
-      console.log("🌱 Daily yield accrual process...");
+      childLogger("float-manager").info("🌱 Daily yield accrual process...");
 
       // Idempotency: Check if already accrued today
       const today = new Date();
@@ -220,7 +241,9 @@ export class FloatManager {
         lastFloatAccrueAt: { $gte: today },
       });
       if (alreadyRan) {
-        console.log("🌱 Yield accrual already ran today, skipping.");
+        childLogger("float-manager").info(
+          "🌱 Yield accrual already ran today, skipping.",
+        );
         return { totalYield: 0, userCount: 0, success: true };
       }
 
@@ -237,7 +260,9 @@ export class FloatManager {
         },
       );
 
-      console.log(`💰 Accrued $${dailyYield.toFixed(2)} in daily yield`);
+      childLogger("float-manager").info(
+        `💰 Accrued $${dailyYield.toFixed(2)} in daily yield`,
+      );
 
       await this.notifyMerchants({
         title: "Daily Yield Accrued",
@@ -251,7 +276,10 @@ export class FloatManager {
         success: true,
       };
     } catch (error) {
-      console.error("❌ Yield accrual failed:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Yield accrual failed",
+      );
       return {
         totalYield: 0,
         userCount: 0,
@@ -269,7 +297,9 @@ export class FloatManager {
     error?: string;
   }> {
     try {
-      console.log("🚨 Emergency float withdrawal initiated...");
+      childLogger("float-manager").info(
+        "🚨 Emergency float withdrawal initiated...",
+      );
 
       const stats = await this.getFloatStats();
 
@@ -278,7 +308,7 @@ export class FloatManager {
       // 2. Transfer back to platform wallet
       // 3. Update user balances
 
-      console.log(
+      childLogger("float-manager").info(
         `💸 Emergency withdrew $${stats.investedAmount} from yield protocols`,
       );
 
@@ -294,7 +324,10 @@ export class FloatManager {
         success: true,
       };
     } catch (error) {
-      console.error("❌ Emergency withdrawal failed:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Emergency withdrawal failed",
+      );
       return {
         withdrawn: 0,
         success: false,
@@ -344,7 +377,10 @@ export class FloatManager {
         recommendations,
       };
     } catch (error) {
-      console.error("❌ Failed to get health metrics:", error);
+      childLogger("float-manager").error(
+        { err: error },
+        "❌ Failed to get health metrics",
+      );
       return {
         healthScore: 0,
         riskLevel: "high",

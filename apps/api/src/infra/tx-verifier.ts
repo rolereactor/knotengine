@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import { Currency } from "@qodinger/knot-types";
+import { childLogger } from "./logger.js";
 
 export class TxVerifier {
   // Transfer(address,address,uint256)
@@ -32,7 +33,9 @@ export class TxVerifier {
       return { isValid: false, amountCrypto: 0 };
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`TxVerifier Error (${currency}):`, message);
+      childLogger("tx-verifier").error(
+        `TxVerifier Error (${currency}): ${message}`,
+      );
       return { isValid: false, amountCrypto: 0 };
     }
   }
@@ -103,7 +106,7 @@ export class TxVerifier {
     }
 
     if (!process.env.ALCHEMY_API_KEY) {
-      console.warn("TxVerifier: ALCHEMY_API_KEY missing");
+      childLogger("tx-verifier").warn("TxVerifier: ALCHEMY_API_KEY missing");
       return { isValid: false, amountCrypto: 0 };
     }
 

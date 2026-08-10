@@ -9,6 +9,7 @@ import { PLAN_COSTS } from "@qodinger/knot-types";
 import { isSelfHosted } from "./self-hosted-mode.js";
 import { AuditLogger } from "./audit-logger.js";
 import { NotificationService } from "../infra/notification-service.js";
+import { childLogger } from "../infra/logger.js";
 
 /**
  * 🔄 Subscription Billing Engine
@@ -44,11 +45,11 @@ export class SubscriptionBilling {
       revenue: 0,
     };
 
-    console.log("🔄 Starting monthly subscription billing...");
+    childLogger("billing").info("🔄 Starting monthly subscription billing...");
 
     try {
       if (isSelfHosted()) {
-        console.log(
+        childLogger("billing").info(
           "🏠 Self-hosted mode detected — skipping subscription billing",
         );
         return results;
@@ -60,7 +61,9 @@ export class SubscriptionBilling {
         isActive: true,
       }).populate("userId");
 
-      console.log(`📊 Found ${paidMerchants.length} merchants on paid plans`);
+      childLogger("billing").info(
+        `📊 Found ${paidMerchants.length} merchants on paid plans`,
+      );
 
       for (const merchant of paidMerchants) {
         results.processed++;
@@ -82,25 +85,33 @@ export class SubscriptionBilling {
           // Add small delay to avoid overwhelming the database
           await new Promise((resolve) => setTimeout(resolve, 100));
         } catch (error) {
-          console.error(
-            `❌ Billing failed for merchant ${merchant.merchantId}:`,
-            error,
+          childLogger("billing").error(
+            { err: error },
+            `❌ Billing failed for merchant ${merchant.merchantId}`,
           );
           results.failed++;
         }
       }
 
-      console.log("✅ Monthly billing complete:", {
-        processed: results.processed,
-        successful: results.successful,
-        failed: results.failed,
-        downgraded: results.downgraded,
-        revenue: `$${results.revenue.toFixed(2)}`,
-      });
+      childLogger("billing").info(
+        {
+          results: {
+            processed: results.processed,
+            successful: results.successful,
+            failed: results.failed,
+            downgraded: results.downgraded,
+            revenue: `$${results.revenue.toFixed(2)}`,
+          },
+        },
+        "✅ Monthly billing complete",
+      );
 
       return results;
     } catch (error) {
-      console.error("❌ Monthly billing process failed:", error);
+      childLogger("billing").error(
+        { err: error },
+        "❌ Monthly billing process failed",
+      );
       throw error;
     }
   }
@@ -132,7 +143,7 @@ export class SubscriptionBilling {
 
     // Check if user exists and is populated
     if (!user || !isPopulatedUser(user) || user.creditBalance < cost) {
-      console.log(
+      childLogger("billing").info(
         `💸 Insufficient balance for ${merchant.merchantId} (${plan}) - checking grace period`,
       );
 
@@ -141,7 +152,7 @@ export class SubscriptionBilling {
 
       // First time insufficient balance - start grace period and send warning
       if (!merchant.gracePeriodStarted) {
-        console.log(
+        childLogger("billing").info(
           `⏰ Starting grace period for ${merchant.merchantId} - ${gracePeriodDays} days until downgrade`,
         );
 
@@ -178,7 +189,7 @@ export class SubscriptionBilling {
           (gracePeriodEnds.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
         );
 
-        console.log(
+        childLogger("billing").info(
           `⏳ Grace period active for ${merchant.merchantId} - ${daysRemaining} days remaining`,
         );
 
@@ -203,7 +214,7 @@ export class SubscriptionBilling {
       }
 
       // Grace period expired - downgrade now
-      console.log(
+      childLogger("billing").info(
         `⏰ Grace period expired for ${merchant.merchantId} - downgrading to starter`,
       );
 
@@ -279,7 +290,7 @@ export class SubscriptionBilling {
       link: "/dashboard/billing",
     });
 
-    console.log(
+    childLogger("billing").info(
       `💳 Charged ${merchant.merchantId} $${cost.toFixed(2)} for ${plan} plan`,
     );
 
@@ -344,7 +355,9 @@ export class SubscriptionBilling {
     const isFirstOfMonth = today.getDate() === 1;
 
     if (isFirstOfMonth) {
-      console.log("📅 Today is the 1st - processing monthly billing");
+      childLogger("billing").info(
+        "📅 Today is the 1st - processing monthly billing",
+      );
       await this.processMonthlyBilling();
       return true;
     }

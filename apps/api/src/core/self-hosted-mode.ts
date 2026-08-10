@@ -10,6 +10,3 @@ export function getEffectivePlan(plan: string): string {
   }
   return plan;
 }
-
-export const SELF_HOSTED_NOTICE =
-  "Self-hosted mode active — all features unlocked, zero platform fees.";

@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { logger } from "./logger.js";
 
 /**
  * Initializes Sentry error tracking.
@@ -16,7 +17,7 @@ export function initSentry(version: string): void {
     integrations: [Sentry.mongooseIntegration()],
   });
 
-  console.log("🔭 Sentry initialized");
+  logger.info("🔭 Sentry initialized");
 }
 
 /**
@@ -33,5 +34,3 @@ export function captureException(
     Sentry.captureException(err);
   });
 }
-
-export { Sentry };

@@ -1,4 +1,5 @@
 import { Invoice, Merchant, User } from "@qodinger/knot-database";
+import { childLogger } from "../infra/logger.js";
 
 /**
  * 📊 Scheduled Export Processor
@@ -12,14 +13,16 @@ export async function processScheduledExport(
 ): Promise<void> {
   const merchant = await Merchant.findOne({ merchantId });
   if (!merchant || !merchant.scheduledExport?.enabled) {
-    console.log(`Skipping scheduled export for ${merchantId}: not enabled`);
+    childLogger("export").info(
+      `Skipping scheduled export for ${merchantId}: not enabled`,
+    );
     return;
   }
 
   const user = merchant.userId ? await User.findById(merchant.userId) : null;
   const recipientEmail = user?.email || merchant.email;
   if (!recipientEmail) {
-    console.warn(
+    childLogger("export").warn(
       `⚠️ No email found for merchant ${merchantId}, skipping scheduled export`,
     );
     return;
@@ -123,7 +126,7 @@ export async function processScheduledExport(
     $set: { "scheduledExport.lastExportedAt": now },
   });
 
-  console.info(
+  childLogger("export").info(
     `📊 Scheduled export sent: ${frequency} export for ${merchant.name} (${invoices.length} invoices, $${totalUsd.toFixed(2)})`,
   );
 }
@@ -171,13 +174,13 @@ export async function processAllScheduledExports(): Promise<{
       processed++;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(
+      childLogger("export").error(
         `❌ Scheduled export failed for merchant ${merchant.merchantId}: ${message}`,
       );
     }
   }
 
-  console.info(
+  childLogger("export").info(
     `📊 Scheduled exports batch complete: ${processed} processed, ${skipped} skipped`,
   );
   return { processed, skipped };

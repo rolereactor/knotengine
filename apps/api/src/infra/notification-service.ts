@@ -1,6 +1,7 @@
 import { Notification, Merchant } from "@qodinger/knot-database";
 import { SocketService } from "./socket-service.js";
 import { EmailService } from "./email-service.js";
+import { childLogger } from "./logger.js";
 
 /**
  * 🔔 Notification Service
@@ -96,7 +97,10 @@ export class NotificationService {
 
       return notification;
     } catch (err) {
-      console.error("❌ Failed to create notification:", err);
+      childLogger("notification").error(
+        { err },
+        "❌ Failed to create notification",
+      );
       return null;
     }
   }
@@ -169,7 +173,9 @@ export class NotificationService {
       }
 
       if (!shouldSendEmail) {
-        console.log(`📧 Email skipped for ${params.title} (user preference)`);
+        childLogger("notification").info(
+          `📧 Email skipped for ${params.title} (user preference)`,
+        );
         return;
       }
 
@@ -233,7 +239,10 @@ export class NotificationService {
         });
       }
     } catch (err) {
-      console.error("❌ Failed to send email notification:", err);
+      childLogger("notification").error(
+        { err: err },
+        "❌ Failed to send email notification",
+      );
       // Don't throw - email failures shouldn't break notification flow
     }
   }
