@@ -326,44 +326,44 @@
 
 ### 7.1 Lightning Network
 
-- [ ] **F1** Research Lightning implementations (LND, CLN, Eclair)
-- [ ] **F2** Design Lightning provider interface
-- [ ] **F3** Implement LND provider
-- [ ] **F4** Implement CLN provider
-- [ ] **F5** Add Lightning invoice creation to invoice flow
-- [ ] **F6** Add Lightning payment detection to ConfirmationEngine
-- [ ] **F7** Add Lightning settings to merchant dashboard
+- [x] **F1** Research Lightning implementations (LND, CLN, Eclair)
+- [x] **F2** Design Lightning provider interface
+- [x] **F3** Implement LND provider
+- [x] **F4** Implement CLN provider
+- [x] **F5** Add Lightning invoice creation to invoice flow
+- [x] **F6** Add Lightning payment detection to ConfirmationEngine
+- [x] **F7** Add Lightning settings to merchant dashboard
 
 ### 7.2 Point-of-Sale
 
-- [ ] **F8** Design PoS data model (products, categories, registers)
-- [ ] **F9** Create PoS database schemas
-- [ ] **F10** Build PoS API endpoints
-- [ ] **F11** Build PoS dashboard UI
-- [ ] **F12** Build PoS checkout (tablet-friendly)
+- [x] **F8** Design PoS data model (products, categories, registers)
+- [x] **F9** Create PoS database schemas
+- [x] **F10** Build PoS API endpoints
+- [x] **F11** Build PoS dashboard UI
+- [x] **F12** Build PoS checkout (tablet-friendly)
 
 ### 7.3 Refunds
 
-- [ ] **F13** Design refund/pull payment data model
-- [ ] **F14** Create refund database schemas
-- [ ] **F15** Build refund API endpoints
-- [ ] **F16** Add refund webhook events
-- [ ] **F17** Build refund dashboard UI
+- [x] **F13** Design refund/pull payment data model
+- [x] **F14** Create refund database schemas
+- [x] **F15** Build refund API endpoints
+- [x] **F16** Add refund webhook events
+- [x] **F17** Build refund dashboard UI
 
 ### 7.4 Multi-Store
 
-- [ ] **F18** Add store concept to Merchant model
-- [ ] **F19** Isolate data per store (invoices, webhooks, settings)
-- [ ] **F20** Add store switching in dashboard
-- [ ] **F21** Add store-level API key scoping
+- [x] **F18** Add store concept to Merchant model
+- [x] **F19** Isolate data per store (invoices, webhooks, settings)
+- [x] **F20** Add store switching in dashboard
+- [x] **F21** Add store-level API key scoping
 
 ### 7.5 Export & Reporting
 
-- [ ] **F22** Add CSV export for invoices
-- [ ] **F23** Add JSON export for invoices
-- [ ] **F24** Add tax report generation
-- [ ] **F25** Add custom date range export
-- [ ] **F26** Add scheduled export (daily/weekly email)
+- [x] **F22** Add CSV export for invoices
+- [x] **F23** Add JSON export for invoices
+- [x] **F24** Add tax report generation
+- [x] **F25** Add custom date range export
+- [x] **F26** Add scheduled export (daily/weekly email)
 
 ---
 
@@ -414,7 +414,7 @@
 | 4. Developer Experience      | 10      | 10       | 0         |
 | 5. Merchant UX               | 14      | 14       | 0         |
 | 6. Infrastructure            | 8       | 8        | 0         |
-| 7. Feature Parity (BTCPay)   | 26      | 0        | 26        |
+| 7. Feature Parity (BTCPay)   | 26      | 26       | 0         |
 | 8. Code Quality              | 8       | 8        | 0         |
 | **Total**                    | **105** | **105**  | **0**     |
 
